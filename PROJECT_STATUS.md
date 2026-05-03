@@ -19,11 +19,43 @@ BoomCode is an offline number-code deduction game with a bomb-defusal theme. The
   - Uses device locale to choose `assets/splash/main_kor.png` or `assets/splash/main_eng.png`.
   - Then navigates to `HomeScreen`.
 - Home/main menu:
-  - Uses full-screen image assets:
-    - `assets/menu/main_menu_kor.png`
-    - `assets/menu/main_menu_eng.png`
-  - Invisible touch hit areas route to setup, records, settings, help, and exit confirm dialog.
-  - Exit button shows a confirm dialog before `SystemNavigator.pop()`.
+  - File: `lib/features/home/home_screen.dart`
+  - Uses the common background `assets/menu/background.png`.
+  - Uses `SafeArea` + `LayoutBuilder` and responsive scale values from a `360 x 800 dp` reference canvas.
+  - Uses language-specific complete PNG menu assets with baked text:
+    - `assets/menu/menu_logo_eng.png`
+    - `assets/menu/menu_logo_kor.png`
+    - `assets/menu/menu_currency.png`
+    - `assets/menu/menu_start_eng.png`
+    - `assets/menu/menu_start_kor.png`
+    - `assets/menu/menu_difficulty_eng.png`
+    - `assets/menu/menu_difficulty_kor.png`
+    - `assets/menu/menu_records_eng.png`
+    - `assets/menu/menu_records_kor.png`
+    - `assets/menu/menu_settings_eng.png`
+    - `assets/menu/menu_settings_kor.png`
+    - `assets/menu/menu_shop_eng.png`
+    - `assets/menu/menu_shop_kor.png`
+    - `assets/menu/menu_remove_ads_eng.png`
+    - `assets/menu/menu_remove_ads_kor.png`
+    - `assets/menu/menu_help_eng.png`
+    - `assets/menu/menu_help_kor.png`
+  - Buttons are real Flutter tap targets displaying complete button images.
+  - Main menu button assets were regenerated in a darker sci-fi metal style:
+    - Start Game / Game Start is the red primary action button.
+    - Difficulty, Records, and Settings are dark secondary buttons.
+    - Bottom utility buttons are icon+label PNG assets.
+  - Main menu current layout notes:
+    - Logo is enlarged and positioned high on the screen.
+    - Main button group is intentionally wide and visually thinner than the source PNG aspect ratio.
+    - Start Game and Select Difficulty currently have no vertical gap between them.
+    - Other main buttons keep a very small responsive vertical gap.
+    - Bottom utility buttons are scaled down to 80% of the latest utility-button sizing and their horizontal gap is reduced to 30% of the computed spacing.
+    - Currency panel is intentionally a blank frame for future Flutter-rendered currency text. It is displayed shorter and thicker than the source asset using `BoxFit.fill`.
+  - The visible exit button has been removed from the main menu.
+  - Start Game and Select Difficulty both route to Mission Setup.
+  - Records, Settings, and Help route to their screens.
+  - Shop and Remove Ads currently show a coming-soon `SnackBar`.
 - Global/common background:
   - All non-image screens should use `assets/menu/background.png`.
   - Shared widget: `lib/core/widgets/app_background.dart`.
@@ -71,6 +103,8 @@ BoomCode is an offline number-code deduction game with a bomb-defusal theme. The
 
 - Full final game UI art for all screens.
 - Final game screen image assets and exact bomb-defusal UI layout.
+- Final main menu layout QA after the latest responsive placement changes.
+- Flutter-rendered currency amount and plus-button behavior inside/around the current blank currency panel.
 - Persistent settings for:
   - sound volume
   - music volume
@@ -81,6 +115,7 @@ BoomCode is an offline number-code deduction game with a bomb-defusal theme. The
 - Full localization system using ARB or Flutter localization delegates.
 - Production-grade Android app icon and launch assets.
 - Complete QA across many device sizes and font-scale settings.
+- Final visual QA for the regenerated main menu assets and exact menu spacing on target devices.
 - Final release build configuration.
 
 ## Terminology Rules
@@ -211,6 +246,23 @@ test/
 assets/menu/background.png
 assets/menu/main_menu_eng.png
 assets/menu/main_menu_kor.png
+assets/menu/menu_logo_eng.png
+assets/menu/menu_logo_kor.png
+assets/menu/menu_currency.png
+assets/menu/menu_start_eng.png
+assets/menu/menu_start_kor.png
+assets/menu/menu_difficulty_eng.png
+assets/menu/menu_difficulty_kor.png
+assets/menu/menu_records_eng.png
+assets/menu/menu_records_kor.png
+assets/menu/menu_settings_eng.png
+assets/menu/menu_settings_kor.png
+assets/menu/menu_shop_eng.png
+assets/menu/menu_shop_kor.png
+assets/menu/menu_remove_ads_eng.png
+assets/menu/menu_remove_ads_kor.png
+assets/menu/menu_help_eng.png
+assets/menu/menu_help_kor.png
 assets/splash/main_eng.png
 assets/splash/main_kor.png
 assets/mission_setup/back_button.png
@@ -255,7 +307,26 @@ Also try Android Emulator cold boot or a new emulator image.
 
 - `mode_select_screen.dart` is large and should eventually be split into smaller widgets only when doing a focused refactor.
 - Mission setup asset generation was done incrementally. Some generated assets may need visual review and replacement for final art quality.
-- Home menu uses invisible coordinate hit areas over full-screen image assets. Touch coordinates may need adjustment if main menu art changes.
+- Home menu now uses separate, language-specific complete image buttons instead of Flutter-rendered button labels.
+- Home menu image assets were regenerated iteratively and need device visual QA for sizing, spacing, and any remaining chroma-key edge artifacts.
+- Latest main menu asset/layout pass:
+  - `assets/menu/menu_start_eng.png`
+  - `assets/menu/menu_start_kor.png`
+  - `assets/menu/menu_difficulty_eng.png`
+  - `assets/menu/menu_difficulty_kor.png`
+  - `assets/menu/menu_records_eng.png`
+  - `assets/menu/menu_records_kor.png`
+  - `assets/menu/menu_settings_eng.png`
+  - `assets/menu/menu_settings_kor.png`
+  - `assets/menu/menu_shop_eng.png`
+  - `assets/menu/menu_shop_kor.png`
+  - `assets/menu/menu_remove_ads_eng.png`
+  - `assets/menu/menu_remove_ads_kor.png`
+  - `assets/menu/menu_help_eng.png`
+  - `assets/menu/menu_help_kor.png`
+  - `lib/features/home/home_screen.dart`
+- `assets/menu/main_menu_eng.png` and `assets/menu/main_menu_kor.png` are retained as visual references, not the active home screen layout.
+- Some old experimental menu assets may remain if the OS kept them locked during cleanup; remove them only after confirming no code references them.
 - App currently uses a simple `AppText` helper instead of Flutter's full localization system.
 - Sound/music/vibration controls do not persist and do not affect real audio/haptics yet.
 - `AppBackground` is the standard background path. Do not add per-screen full background images unless explicitly requested.

@@ -32,11 +32,13 @@ Use:
 - Do not replace generated assets unless the user explicitly asks for replacement.
 - If a file has user edits, work with them and do not revert them.
 - At the end, list changed files and commands the user should run.
+- At the end of every task, always include a short list of what the user should do next.
 
 ## Command Rules
 
 - The user usually runs build/test/analyze commands directly.
-- Do not run `flutter run`, `flutter build`, `flutter test`, or `flutter analyze` unless the user explicitly allows it for the current task.
+- Do not run app/build/check/format commands unless the user explicitly allows it for the current task.
+- This includes `flutter run`, `flutter build`, `flutter test`, `flutter analyze`, and `dart format`.
 - It is okay to read project files when needed.
 - It is okay to generate image assets when the user asks for asset generation.
 - For documentation tasks, create or update only requested docs.
@@ -65,14 +67,62 @@ assets/menu/background.png
 - Do not create per-screen background images unless the user explicitly asks.
 - Screen-specific assets should be UI parts only: buttons, sliders, icons, panels.
 
+Main menu image rule:
+
+- `assets/menu/main_menu_eng.png` and `assets/menu/main_menu_kor.png` are visual references.
+- The active Home screen uses `assets/menu/background.png` plus language-specific complete PNG UI parts.
+- Main menu button images must be complete generated images with their text already integrated into the artwork.
+- Do not make main menu buttons by generating empty frames and then drawing or overlaying Flutter text on top.
+- Do not post-compose text onto empty button frames unless the user explicitly requests that workflow.
+- Keep Korean and English main menu button assets as separate files.
+- The visible exit button has been removed and should not be reintroduced unless the user explicitly asks.
+
 Responsive layout rule:
 
 - Every screen must adapt to phone size.
-- Use `SafeArea`.
-- Prefer `LayoutBuilder`, `FittedBox`, `Flexible`, `Expanded`, and responsive helpers.
+- Design from a single base canvas of `360 x 800 dp`, but treat it only as the reference size, not as fixed pixels.
+- All production screens must be non-scrollable by default. Do not use `SingleChildScrollView` for main game/menu/setup screens unless the user explicitly changes this requirement.
+- Use `SafeArea` on every full-screen UI.
+- Use `LayoutBuilder` or `MediaQuery` to read the actual available screen size.
+- Calculate responsive scale values for every screen:
+
+```dart
+final scaleW = constraints.maxWidth / 360.0;
+final scaleH = constraints.maxHeight / 800.0;
+final scale = math.min(scaleW, scaleH);
+```
+
+- Apply `scale` to font sizes, button heights, icon sizes, margins, gaps, and padding.
+- For horizontal sizes, prefer percentages of available width, for example `width * 0.82` or `FractionallySizedBox(widthFactor: 0.82)`.
+- Prefer flexible layout relationships over fixed coordinates: `Column`, `Row`, `Expanded`, `Flexible`, `Spacer`, `Align`, `FractionallySizedBox`, `AspectRatio`, and `FittedBox`.
 - Avoid fixed full-screen pixel layouts except when mapping invisible hit areas over a full-screen image design.
-- Avoid vertical overflow.
+- Avoid vertical overflow. If a small device would overflow, shrink spacing, logo, fonts, buttons, and icons proportionally; do not add scrolling.
+- Large logo/title/image areas must use `FittedBox`, `AspectRatio`, or `BoxFit.contain` so they never clip or distort.
+- Full-screen backgrounds must use `BoxFit.cover`.
+- UI-part images such as button frames should normally use `BoxFit.contain` unless the asset is designed to stretch safely.
+- Maintain minimum practical touch targets around `48dp` when possible, but for very small screens prioritize fitting the entire screen without overflow.
+- Text must never overflow. Use `FittedBox`, `maxLines`, and responsive font sizes where needed.
 - Mission Setup must remain a single non-scrollable screen unless the user changes that requirement.
+
+Recommended vertical structure for menu-like screens:
+
+```text
+SafeArea
+└─ LayoutBuilder
+   └─ Stack / AppBackground
+      └─ Column
+         ├─ Top status area      flex: 1
+         ├─ Logo/title area      flex: 3
+         ├─ Main buttons area    flex: 4
+         └─ Bottom icons area    flex: 2
+```
+
+For the Home/Main Menu screen specifically:
+
+- Build the screen by composing independent image parts: background, logo/title, button images, coin panel, and bottom icon buttons.
+- Do not use one giant full-screen menu image as the final UI unless the user explicitly asks for image-map style.
+- Main menu must fit without vertical scrolling on Galaxy S23 Ultra and smaller common Android phones.
+- Test layout at least conceptually against these sizes: `360x640`, `360x800`, `393x873`, `411x891`, and Galaxy S23 Ultra-like tall screens.
 
 Localization rule:
 
@@ -160,6 +210,16 @@ assets/mission_setup/
 - PNG files should have transparent backgrounds.
 - Text should not be baked into most UI assets.
 
+```text
+lib/features/home/home_screen.dart
+```
+
+- Home/main menu screen.
+- Use language-specific complete image buttons under `assets/menu/`.
+- Do not overlay Flutter text on main menu buttons.
+- Do not use invisible full-screen coordinate hit areas as the primary UI unless the user explicitly requests a full-screen image-map approach.
+- Do not add an exit button unless explicitly requested.
+
 ## Image Asset Rules
 
 For generated UI assets:
@@ -172,6 +232,11 @@ For generated UI assets:
 - Button frames should have empty center areas for code text.
 - Plus/minus button images should not contain `+` or `-`; symbols are overlaid in code.
 - Keep the dark sci-fi metal style consistent.
+
+Exception:
+
+- Main menu buttons are explicitly required to have baked text inside the generated image.
+- Main menu text must be generated as part of the whole button image, not added later as a separate overlay.
 
 Current mission setup asset sizes:
 
