@@ -264,6 +264,37 @@ flutter run
 
 Only run these yourself if the user explicitly asks you to.
 
+## Version Control Guidance
+
+When the user asks to update `PROJECT_STATUS.md`, `NEXT_TASKS.md`, and optionally `CODEX_INSTRUCTIONS.md`, include a short Git version-control checklist after the update.
+
+Use this sequence:
+
+```bash
+git status --short
+git add .
+git status --short
+git diff --cached --stat
+git commit -m "Update project status and task notes"
+git log --oneline -5
+git push
+```
+
+If this is the first push for the current branch, tell the user to check the branch name and push with upstream tracking:
+
+```bash
+git branch --show-current
+git push -u origin <branch-name>
+```
+
+Only recommend `git add .` when `.gitignore` already excludes local scratch/review files such as:
+
+```text
+tmp/
+Old_Save/
+assets/capture/
+```
+
 ## Final Response Format
 
 Keep final responses concise.
