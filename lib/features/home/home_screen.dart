@@ -29,27 +29,27 @@ class HomeScreen extends StatelessWidget {
               final scaleH = height / 800.0;
               final scale = math.min(scaleW, scaleH);
               final s = scale.clamp(0.78, 1.16).toDouble();
-              final mainButtonWidth = math.min(width * 1.02, 418.0 * s);
-              final mainButtonHeight =
-                  mainButtonWidth / _MenuSizes.mainButtonAspect * 0.82;
+              final mainButtonWidth = math.min(width * 0.86, 360.0 * s);
+              final primaryButtonHeight = 76.0 * s;
+              final secondaryButtonHeight = 65.0 * s;
               final mainButtonLeft = (width - mainButtonWidth) / 2;
-              final buttonGap = 1.0 * s;
-              final buttonTop = height * 0.435;
+              final buttonGap = 5.0 * s;
+              final buttonTop = height * 0.436;
               final utilityAlignInset = mainButtonWidth * 0.025;
               final utilitySpan = mainButtonWidth - utilityAlignInset * 2;
-              final utilityWidth = math.min(96.0 * s, utilitySpan * 0.29) * 0.8;
+              final utilityWidth = math.min(76.0 * s, utilitySpan * 0.28);
               final utilityHeight =
-                  utilityWidth / _MenuSizes.utilityButtonAspect;
-              final utilityTop = height * 0.845;
+                  utilityWidth / _MenuSizes.bottomButtonAspect;
+              final utilityTop = height * 0.84;
               final utilityGap =
-                  math.max(0.0, (utilitySpan - utilityWidth * 3) / 2) * 0.3;
+                  math.max(0.0, (utilitySpan - utilityWidth * 3) / 2) * 0.45;
               final utilityLeft =
                   mainButtonLeft +
                   utilityAlignInset +
                   (utilitySpan - utilityWidth * 3 - utilityGap * 2) / 2;
               final currencyWidth = math.min(width * 0.38, 152.0 * s);
               final currencyHeight = currencyWidth / 2.62;
-              final logoWidth = math.min(width * 0.94, 384.0 * s);
+              final logoWidth = math.min(width * 0.91, 360.0 * s);
               final logoHeight = logoWidth / _MenuSizes.logoAspect;
 
               return Stack(
@@ -75,24 +75,24 @@ class HomeScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        _MainMenuButton(
-                          label: strings.startGame,
-                          assetPath: assets.start,
-                          height: mainButtonHeight,
+                        PrimaryMenuButton(
+                          text: strings.startGame,
+                          scale: s,
+                          height: primaryButtonHeight,
                           onPressed: () => _openModeSelect(context),
                         ),
                         const SizedBox.shrink(),
-                        _MainMenuButton(
-                          label: strings.selectDifficulty,
-                          assetPath: assets.difficulty,
-                          height: mainButtonHeight,
+                        SecondaryMenuButton(
+                          text: strings.selectDifficulty,
+                          scale: s,
+                          height: secondaryButtonHeight,
                           onPressed: () => _openModeSelect(context),
                         ),
                         SizedBox(height: buttonGap),
-                        _MainMenuButton(
-                          label: strings.records,
-                          assetPath: assets.records,
-                          height: mainButtonHeight,
+                        SecondaryMenuButton(
+                          text: strings.records,
+                          scale: s,
+                          height: secondaryButtonHeight,
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => const RecordsScreen(),
@@ -100,10 +100,10 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
                         SizedBox(height: buttonGap),
-                        _MainMenuButton(
-                          label: strings.settings,
-                          assetPath: assets.settings,
-                          height: mainButtonHeight,
+                        SecondaryMenuButton(
+                          text: strings.settings,
+                          scale: s,
+                          height: secondaryButtonHeight,
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => const SettingsScreen(),
@@ -120,25 +120,28 @@ class HomeScreen extends StatelessWidget {
                     height: utilityHeight,
                     child: Row(
                       children: [
-                        _UtilityButton(
-                          label: strings.shop,
-                          assetPath: assets.shop,
+                        BottomMenuButton(
+                          text: strings.shop,
+                          assetPath: assets.shopIcon,
+                          scale: s,
                           width: utilityWidth,
                           height: utilityHeight,
                           onPressed: () => _showComingSoon(context),
                         ),
                         SizedBox(width: utilityGap),
-                        _UtilityButton(
-                          label: strings.removeAds,
-                          assetPath: assets.removeAds,
+                        BottomMenuButton(
+                          text: strings.removeAds,
+                          assetPath: assets.noAdsIcon,
+                          scale: s,
                           width: utilityWidth,
                           height: utilityHeight,
                           onPressed: () => _showComingSoon(context),
                         ),
                         SizedBox(width: utilityGap),
-                        _UtilityButton(
-                          label: strings.help,
-                          assetPath: assets.help,
+                        BottomMenuButton(
+                          text: strings.help,
+                          assetPath: assets.helpIcon,
+                          scale: s,
                           width: utilityWidth,
                           height: utilityHeight,
                           onPressed: () => Navigator.of(context).push(
@@ -174,8 +177,7 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _MenuSizes {
-  static const mainButtonAspect = 738 / 172;
-  static const utilityButtonAspect = 196 / 248;
+  static const bottomButtonAspect = 196 / 248;
   static const logoAspect = 760 / 620;
 }
 
@@ -207,56 +209,83 @@ class _LogoPlate extends StatelessWidget {
   }
 }
 
-class _MainMenuButton extends StatelessWidget {
-  final String label;
-  final String assetPath;
+class PrimaryMenuButton extends StatelessWidget {
+  final String text;
+  final double scale;
+  final double? width;
   final double height;
   final VoidCallback onPressed;
 
-  const _MainMenuButton({
-    required this.label,
-    required this.assetPath,
+  const PrimaryMenuButton({
+    super.key,
+    required this.text,
+    required this.scale,
+    this.width,
     required this.height,
     required this.onPressed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
+    return _MenuTextButton(
+      text: text,
+      assetPath: _MenuFrameAssets.primary,
+      scale: scale,
+      width: width,
       height: height,
-      child: Semantics(
-        button: true,
-        label: label,
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onPressed,
-            borderRadius: BorderRadius.circular(8),
-            splashColor: Colors.redAccent.withValues(alpha: 0.16),
-            highlightColor: Colors.white.withValues(alpha: 0.08),
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-            ),
-          ),
-        ),
-      ),
+      textStyle: _MenuTextStyles.primary(scale),
+      baselineDy: _MenuTextStyles.baselineDy(scale),
+      splashColor: Colors.redAccent.withValues(alpha: 0.16),
+      onPressed: onPressed,
     );
   }
 }
 
-class _UtilityButton extends StatelessWidget {
-  final String label;
+class SecondaryMenuButton extends StatelessWidget {
+  final String text;
+  final double scale;
+  final double? width;
+  final double height;
+  final VoidCallback onPressed;
+
+  const SecondaryMenuButton({
+    super.key,
+    required this.text,
+    required this.scale,
+    this.width,
+    required this.height,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _MenuTextButton(
+      text: text,
+      assetPath: _MenuFrameAssets.secondary,
+      scale: scale,
+      width: width,
+      height: height,
+      textStyle: _MenuTextStyles.secondary(scale),
+      baselineDy: _MenuTextStyles.baselineDy(scale),
+      splashColor: Colors.cyanAccent.withValues(alpha: 0.12),
+      onPressed: onPressed,
+    );
+  }
+}
+
+class BottomMenuButton extends StatelessWidget {
+  final String text;
   final String assetPath;
+  final double scale;
   final double width;
   final double height;
   final VoidCallback onPressed;
 
-  const _UtilityButton({
-    required this.label,
+  const BottomMenuButton({
+    super.key,
+    required this.text,
     required this.assetPath,
+    required this.scale,
     required this.width,
     required this.height,
     required this.onPressed,
@@ -269,17 +298,52 @@ class _UtilityButton extends StatelessWidget {
       height: height,
       child: Semantics(
         button: true,
-        label: label,
+        label: text,
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onTap: onPressed,
             borderRadius: BorderRadius.circular(8),
-            splashColor: Colors.cyanAccent.withValues(alpha: 0.12),
-            child: Image.asset(
-              assetPath,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
+            splashColor: Colors.cyanAccent.withValues(alpha: 0.10),
+            highlightColor: Colors.white.withValues(alpha: 0.06),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  assetPath,
+                  fit: BoxFit.contain,
+                  filterQuality: FilterQuality.high,
+                ),
+                Positioned(
+                  left: width * 0.14,
+                  right: width * 0.14,
+                  top: height * 0.71,
+                  bottom: height * 0.10,
+                  child: Center(
+                    child: Transform.translate(
+                      offset: Offset(
+                        0,
+                        _MenuTextStyles.bottomBaselineDy(scale),
+                      ),
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Text(
+                          text,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          softWrap: false,
+                          style: _MenuTextStyles.bottom(scale),
+                          strutStyle: StrutStyle(
+                            fontSize: _MenuTextStyles.bottomFontSize(scale),
+                            height: 1.0,
+                            forceStrutHeight: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -288,25 +352,160 @@ class _UtilityButton extends StatelessWidget {
   }
 }
 
+class _MenuTextButton extends StatelessWidget {
+  final String text;
+  final String assetPath;
+  final double scale;
+  final double? width;
+  final double height;
+  final TextStyle textStyle;
+  final double baselineDy;
+  final Color splashColor;
+  final VoidCallback onPressed;
+
+  const _MenuTextButton({
+    required this.text,
+    required this.assetPath,
+    required this.scale,
+    required this.width,
+    required this.height,
+    required this.textStyle,
+    required this.baselineDy,
+    required this.splashColor,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: width ?? double.infinity,
+      height: height,
+      child: Semantics(
+        button: true,
+        label: text,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onPressed,
+            borderRadius: BorderRadius.circular(8),
+            splashColor: splashColor,
+            highlightColor: Colors.white.withValues(alpha: 0.08),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  assetPath,
+                  fit: BoxFit.fill,
+                  filterQuality: FilterQuality.high,
+                ),
+                Center(
+                  child: Transform.translate(
+                    offset: Offset(0, baselineDy),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 14.0 * scale),
+                      child: Text(
+                        text,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: textStyle,
+                        strutStyle: StrutStyle(
+                          fontSize: textStyle.fontSize,
+                          height: 1.0,
+                          forceStrutHeight: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MenuFrameAssets {
+  static const primary = 'assets/menu/menu_button_primary_frame.png';
+  static const secondary = 'assets/menu/menu_button_secondary_frame.png';
+}
+
+class _MenuTextStyles {
+  static bool get _isKo =>
+      PlatformDispatcher.instance.locale.languageCode == 'ko';
+
+  static TextStyle primary(double scale) {
+    final isKo = _isKo;
+    return _base(
+      fontSize: (isKo ? 30.2 : 30.0) * scale,
+      fontWeight: isKo ? FontWeight.w900 : FontWeight.w800,
+      shadowBlur: isKo ? 2.5 : 3.5,
+    );
+  }
+
+  static TextStyle secondary(double scale) {
+    final isKo = _isKo;
+    return _base(
+      fontSize: (isKo ? 25.5 : 25.0) * scale,
+      fontWeight: isKo ? FontWeight.w900 : FontWeight.w800,
+      shadowBlur: isKo ? 2.0 : 3.0,
+    );
+  }
+
+  static TextStyle bottom(double scale) {
+    final isKo = _isKo;
+    return _base(
+      fontSize: bottomFontSize(scale),
+      fontWeight: isKo ? FontWeight.w800 : FontWeight.w800,
+      shadowBlur: isKo ? 1.6 : 2.0,
+    );
+  }
+
+  static double bottomFontSize(double scale) => (_isKo ? 19.0 : 16.5) * scale;
+
+  static double baselineDy(double scale) => _isKo ? -1.0 * scale : 0.0;
+  static double bottomBaselineDy(double scale) => _isKo ? -0.5 * scale : 0.0;
+
+  static TextStyle _base({
+    required double fontSize,
+    required FontWeight fontWeight,
+    required double shadowBlur,
+  }) {
+    return TextStyle(
+      color: const Color(0xFFF1F1EC),
+      fontSize: fontSize,
+      fontWeight: fontWeight,
+      height: 1.0,
+      letterSpacing: 0,
+      shadows: [
+        Shadow(
+          color: Colors.black.withValues(alpha: 0.95),
+          offset: const Offset(2, 2),
+          blurRadius: shadowBlur,
+        ),
+        Shadow(
+          color: Colors.redAccent.withValues(alpha: 0.45),
+          offset: const Offset(0, 0),
+          blurRadius: shadowBlur + 1.5,
+        ),
+      ],
+    );
+  }
+}
+
 class _HomeMenuAssets {
   final String logo;
-  final String start;
-  final String difficulty;
-  final String records;
-  final String settings;
-  final String shop;
-  final String removeAds;
-  final String help;
+  final String shopIcon;
+  final String noAdsIcon;
+  final String helpIcon;
 
   const _HomeMenuAssets({
     required this.logo,
-    required this.start,
-    required this.difficulty,
-    required this.records,
-    required this.settings,
-    required this.shop,
-    required this.removeAds,
-    required this.help,
+    required this.shopIcon,
+    required this.noAdsIcon,
+    required this.helpIcon,
   });
 
   static _HomeMenuAssets get current {
@@ -316,24 +515,16 @@ class _HomeMenuAssets {
 
   static const en = _HomeMenuAssets(
     logo: 'assets/menu/menu_logo_eng.png',
-    start: 'assets/menu/menu_start_eng.png',
-    difficulty: 'assets/menu/menu_difficulty_eng.png',
-    records: 'assets/menu/menu_records_eng.png',
-    settings: 'assets/menu/menu_settings_eng.png',
-    shop: 'assets/menu/menu_shop_eng.png',
-    removeAds: 'assets/menu/menu_remove_ads_eng.png',
-    help: 'assets/menu/menu_help_eng.png',
+    shopIcon: 'assets/menu/menu_shop_icon.png',
+    noAdsIcon: 'assets/menu/menu_no_ads_icon.png',
+    helpIcon: 'assets/menu/menu_help_icon.png',
   );
 
   static const ko = _HomeMenuAssets(
     logo: 'assets/menu/menu_logo_kor.png',
-    start: 'assets/menu/menu_start_kor.png',
-    difficulty: 'assets/menu/menu_difficulty_kor.png',
-    records: 'assets/menu/menu_records_kor.png',
-    settings: 'assets/menu/menu_settings_kor.png',
-    shop: 'assets/menu/menu_shop_kor.png',
-    removeAds: 'assets/menu/menu_remove_ads_kor.png',
-    help: 'assets/menu/menu_help_kor.png',
+    shopIcon: 'assets/menu/menu_shop_icon.png',
+    noAdsIcon: 'assets/menu/menu_no_ads_icon.png',
+    helpIcon: 'assets/menu/menu_help_icon.png',
   );
 }
 
@@ -364,13 +555,13 @@ class _HomeStrings {
   }
 
   static const en = _HomeStrings(
-    startGame: 'Start Game',
-    selectDifficulty: 'Select Difficulty',
-    records: 'Records',
-    settings: 'Settings',
-    shop: 'Shop',
-    removeAds: 'Remove Ads',
-    help: 'Help',
+    startGame: 'START GAME',
+    selectDifficulty: 'DIFFICULTY',
+    records: 'RECORDS',
+    settings: 'SETTINGS',
+    shop: 'SHOP',
+    removeAds: 'NO ADS',
+    help: 'HELP',
     comingSoon: 'Coming soon.',
   );
 
@@ -380,7 +571,7 @@ class _HomeStrings {
     records: '\uAE30\uB85D',
     settings: '\uC124\uC815',
     shop: '\uC0C1\uC810',
-    removeAds: '\uAD11\uACE0 \uC81C\uAC70',
+    removeAds: '\uAD11\uACE0\uC81C\uAC70',
     help: '\uB3C4\uC6C0\uB9D0',
     comingSoon: '\uCD9C\uC2DC \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4.',
   );
