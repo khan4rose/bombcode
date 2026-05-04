@@ -224,6 +224,9 @@ assets/menu/menu_shop_icon.png
 assets/menu/menu_no_ads_icon.png
 assets/menu/menu_help_icon.png
 
+하단 utility button은 위 icon-only asset을 active UI에서 사용한다. 화면 텍스트는 표시하지 않고, 접근성 의미는 Semantics label로 유지한다.
+하단 utility button은 터치 영역과 보이는 icon size를 분리하며, icon size는 화면 width 기반 clamp 값으로 계산한다.
+
 보존 asset:
 
 assets/menu/menu_start_eng.png

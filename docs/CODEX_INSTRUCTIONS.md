@@ -149,6 +149,10 @@ lib/features/home/home_screen.dart
 
 - active UI에서는 text baked button image를 사용하지 않는다.
 - 버튼은 공통 frame/icon PNG와 Flutter 렌더링 `Text`를 조합한다.
+- 하단 utility button은 icon-only PNG를 사용하고 화면 텍스트를 표시하지 않는다.
+- 하단 utility button의 의미는 Semantics label로 유지한다.
+- 하단 utility button의 터치 영역과 보이는 icon size는 분리한다.
+- Android viewport metrics 반복 문제가 발생하면 Flutter UI 변경만으로 단정하지 말고 Android window/insets 로그를 확인한다.
 - 기존 text baked button asset은 보존하되 사용자 요청 없이 삭제하지 않는다.
 - 사용자 요청 없이 visible exit button을 재도입하지 않는다.
 - 사용자 요청 없이 full-screen image-map 방식으로 전환하지 않는다.

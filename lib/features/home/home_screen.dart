@@ -25,6 +25,9 @@ class HomeScreen extends StatelessWidget {
             builder: (context, constraints) {
               final width = constraints.maxWidth;
               final height = constraints.maxHeight;
+              if (width <= 0 || height <= 0) {
+                return const SizedBox.shrink();
+              }
               final scaleW = width / 360.0;
               final scaleH = height / 800.0;
               final scale = math.min(scaleW, scaleH);
@@ -37,12 +40,25 @@ class HomeScreen extends StatelessWidget {
               final buttonTop = height * 0.436;
               final utilityAlignInset = mainButtonWidth * 0.025;
               final utilitySpan = mainButtonWidth - utilityAlignInset * 2;
-              final utilityWidth = math.min(76.0 * s, utilitySpan * 0.28);
-              final utilityHeight =
-                  utilityWidth / _MenuSizes.bottomButtonAspect;
-              final utilityTop = height * 0.84;
-              final utilityGap =
-                  math.max(0.0, (utilitySpan - utilityWidth * 3) / 2) * 0.45;
+              final bottomIconSize = (width * 0.17).clamp(62.0, 76.0);
+              final utilityGap = (width * 0.055).clamp(18.0, 24.0);
+              final availableUtilityWidth = math.max(
+                48.0,
+                (utilitySpan - utilityGap * 2) / 3,
+              );
+              final utilityWidth = math.min(
+                math.max(48.0, bottomIconSize + 12.0 * s),
+                availableUtilityWidth,
+              );
+              final utilityHeight = utilityWidth;
+              final bottomIconVisualSize = math.min(
+                bottomIconSize,
+                utilityWidth,
+              );
+              final utilityTop = math.min(
+                height * 0.825,
+                height - utilityHeight - 28.0 * s,
+              );
               final utilityLeft =
                   mainButtonLeft +
                   utilityAlignInset +
@@ -123,27 +139,27 @@ class HomeScreen extends StatelessWidget {
                         BottomMenuButton(
                           text: strings.shop,
                           assetPath: assets.shopIcon,
-                          scale: s,
                           width: utilityWidth,
                           height: utilityHeight,
+                          iconSize: bottomIconVisualSize,
                           onPressed: () => _showComingSoon(context),
                         ),
                         SizedBox(width: utilityGap),
                         BottomMenuButton(
                           text: strings.removeAds,
                           assetPath: assets.noAdsIcon,
-                          scale: s,
                           width: utilityWidth,
                           height: utilityHeight,
+                          iconSize: bottomIconVisualSize,
                           onPressed: () => _showComingSoon(context),
                         ),
                         SizedBox(width: utilityGap),
                         BottomMenuButton(
                           text: strings.help,
                           assetPath: assets.helpIcon,
-                          scale: s,
                           width: utilityWidth,
                           height: utilityHeight,
+                          iconSize: bottomIconVisualSize,
                           onPressed: () => Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (_) => const TutorialScreen(),
@@ -177,7 +193,6 @@ class HomeScreen extends StatelessWidget {
 }
 
 class _MenuSizes {
-  static const bottomButtonAspect = 196 / 248;
   static const logoAspect = 760 / 620;
 }
 
@@ -276,18 +291,18 @@ class SecondaryMenuButton extends StatelessWidget {
 class BottomMenuButton extends StatelessWidget {
   final String text;
   final String assetPath;
-  final double scale;
   final double width;
   final double height;
+  final double iconSize;
   final VoidCallback onPressed;
 
   const BottomMenuButton({
     super.key,
     required this.text,
     required this.assetPath,
-    required this.scale,
     required this.width,
     required this.height,
+    required this.iconSize,
     required this.onPressed,
   });
 
@@ -306,44 +321,17 @@ class BottomMenuButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             splashColor: Colors.cyanAccent.withValues(alpha: 0.10),
             highlightColor: Colors.white.withValues(alpha: 0.06),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                Image.asset(
+            child: Center(
+              child: SizedBox.square(
+                dimension: iconSize,
+                child: Image.asset(
                   assetPath,
+                  width: iconSize,
+                  height: iconSize,
                   fit: BoxFit.contain,
                   filterQuality: FilterQuality.high,
                 ),
-                Positioned(
-                  left: width * 0.14,
-                  right: width * 0.14,
-                  top: height * 0.71,
-                  bottom: height * 0.10,
-                  child: Center(
-                    child: Transform.translate(
-                      offset: Offset(
-                        0,
-                        _MenuTextStyles.bottomBaselineDy(scale),
-                      ),
-                      child: FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          text,
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          softWrap: false,
-                          style: _MenuTextStyles.bottom(scale),
-                          strutStyle: StrutStyle(
-                            fontSize: _MenuTextStyles.bottomFontSize(scale),
-                            height: 1.0,
-                            forceStrutHeight: true,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
@@ -454,19 +442,7 @@ class _MenuTextStyles {
     );
   }
 
-  static TextStyle bottom(double scale) {
-    final isKo = _isKo;
-    return _base(
-      fontSize: bottomFontSize(scale),
-      fontWeight: isKo ? FontWeight.w800 : FontWeight.w800,
-      shadowBlur: isKo ? 1.6 : 2.0,
-    );
-  }
-
-  static double bottomFontSize(double scale) => (_isKo ? 19.0 : 16.5) * scale;
-
   static double baselineDy(double scale) => _isKo ? -1.0 * scale : 0.0;
-  static double bottomBaselineDy(double scale) => _isKo ? -0.5 * scale : 0.0;
 
   static TextStyle _base({
     required double fontSize,
@@ -559,19 +535,19 @@ class _HomeStrings {
     selectDifficulty: 'DIFFICULTY',
     records: 'RECORDS',
     settings: 'SETTINGS',
-    shop: 'SHOP',
-    removeAds: 'NO ADS',
-    help: 'HELP',
+    shop: 'Shop',
+    removeAds: 'Remove Ads',
+    help: 'Help',
     comingSoon: 'Coming soon.',
   );
 
   static const ko = _HomeStrings(
     startGame: '\uAC8C\uC784 \uC2DC\uC791',
-    selectDifficulty: '\uB09C\uC774\uB3C4 \uC120\uD0DD',
+    selectDifficulty: '\uB09C\uC774\uB3C4',
     records: '\uAE30\uB85D',
     settings: '\uC124\uC815',
     shop: '\uC0C1\uC810',
-    removeAds: '\uAD11\uACE0\uC81C\uAC70',
+    removeAds: '\uAD11\uACE0 \uC81C\uAC70',
     help: '\uB3C4\uC6C0\uB9D0',
     comingSoon: '\uCD9C\uC2DC \uC900\uBE44 \uC911\uC785\uB2C8\uB2E4.',
   );

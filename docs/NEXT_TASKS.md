@@ -16,6 +16,49 @@
 
 ## Priority 1. 현재 빌드 안정화
 
+### Task 1.0 Android viewport metrics 반복 / 자동 종료 원인 확인
+
+상태: TODO
+
+목표:
+
+- Android Emulator 실행 중 `WindowInsets changed`, `FlutterJNI: Sending viewport metrics`, `Lost connection to device`가 반복되거나 앱이 자동 종료되는 원인을 확인한다.
+
+현재 메모:
+
+- Home 화면 하단 icon-only 버튼 전환 이후 emulator에서 viewport metrics 반복과 device connection lost가 보고되었다.
+- `SafeArea(bottom: false)`와 `MediaQuery.removePadding(removeBottom: true)`를 Home 화면에 적용해 보았으나 해결되지 않아 롤백했다.
+- 하단 icon asset은 `196x196` 투명 PNG이며, 코드에서는 터치 영역과 보이는 icon size를 분리했다.
+
+작업 체크리스트:
+
+- [ ] 사용자가 실행한 `flutter analyze` 결과 확인
+- [ ] `flutter clean`, `flutter pub get`, `flutter run` 재실행 결과 확인
+- [ ] 종료가 반복되면 `flutter run -v` 또는 Android logcat에서 `FATAL EXCEPTION`, `ANR`, `WindowInsets`, `MainActivity`, `FlutterJNI` 로그 확인
+- [ ] Flutter 예외인지 Android window/insets 문제인지 구분
+- [ ] Android 쪽 edge-to-edge, navigation bar, manifest/theme 설정 확인
+- [ ] Home 화면 layout 계산이 viewport/insets 변화에 민감한지 재검토
+- [ ] 필요한 경우에만 `android/` 또는 Home UI의 최소 수정 적용
+
+수정 금지:
+
+- 게임 판정 로직
+- 난이도 로직
+- 광고/코인/상점 로직
+- 저장 로직
+- 관련 없는 feature screen
+
+예상 점검 명령어:
+
+```bash
+dart format .
+flutter analyze
+flutter clean
+flutter pub get
+flutter run
+flutter run -v
+```
+
 ### Task 1.1 Analyze/Test 이슈 수정
 
 상태: TODO
@@ -84,8 +127,9 @@ assets/menu/menu_help_icon.png
 - [x] Main buttons가 로고 무게감과 맞도록 두께 미세 조정
 - [x] Currency panel이 미래 currency 표시용 blank frame으로 보이는지 확인
 - [x] Currency panel이 길고 얇기보다 짧고 두꺼운지 확인
-- [x] Bottom utility buttons가 글자 없는 icon asset과 코드 렌더링 텍스트 구조를 사용하도록 정리
+- [x] Bottom utility buttons가 화면 텍스트 없는 icon-only asset 구조를 사용하도록 정리
 - [x] Bottom utility buttons가 화면 edge를 침범하지 않으면서 보조 메뉴처럼 보이는지 확인
+- [x] Bottom utility icon asset의 바깥 배경을 투명 PNG로 정리
 - [ ] 생성 PNG 주변 chroma-key/green edge artifact 확인
 - [ ] 사용하지 않는 실험용 menu asset은 `home_screen.dart` 참조 여부 확인 후에만 정리
 

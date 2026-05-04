@@ -130,6 +130,7 @@ SafeArea
 - 이미지 버튼도 `Semantics` label을 갖도록 한다.
 - Main Menu 주요 버튼은 공통 frame PNG와 Flutter `Text` 조합을 사용한다.
 - Main Menu button text는 코드에서 렌더링한다.
+- Main Menu 하단 utility button은 화면 텍스트 없이 icon-only PNG를 사용한다.
 - Mission Setup과 Game Screen의 일반 UI part는 가능한 frame/icon image만 사용한다.
 - 일반 UI part의 text, number, `+`, `-`는 code에서 렌더링한다.
 
@@ -192,14 +193,19 @@ assets/menu/main_menu_kor.png
 
 - Start Game은 red primary button
 - Difficulty, Records, Settings는 dark secondary button
-- Shop, No Ads, Help는 글자 없는 icon asset과 작은 Bottom text style을 사용
+- Shop, Remove Ads, Help는 icon-only asset을 사용하고 화면 텍스트를 표시하지 않는다.
+- 하단 utility button은 Semantics label로 접근성 의미를 유지한다.
+- 하단 utility button은 터치 영역과 보이는 icon size를 분리한다.
+- 하단 utility icon size는 화면 width 기반으로 계산하고 최소/최대 clamp를 둔다.
+- 하단 utility icon layout은 `Center` + 명확한 square size를 사용하고, parent height 기반 크기 계산이나 애니메이션 scale loop를 피한다.
 - Start Game과 Select Difficulty 사이 세로 gap 없음
 - Records / Settings는 아주 작은 responsive gap 유지
 - Main buttons는 로고 무게감과 맞도록 약간 두껍게 조정됨
 - Currency panel은 blank future currency display frame
 - Currency panel은 long/thin보다 short/thick 느낌
 - 현재 `assets/menu/menu_currency.png`는 짧고 두껍게 보이게 하기 위해 `BoxFit.fill` 사용 중
-- Bottom utility buttons는 축소되어 있고 mutual spacing도 줄어든 상태
+- Bottom utility buttons는 축소되어 있고 충분한 mutual spacing과 하단 SafeArea 여백을 유지한다.
+- Android viewport/insets 흔들림이 재발하면 Home 화면 layout과 Android window 설정을 함께 확인한다.
 
 테스트 기준 화면:
 
@@ -250,6 +256,7 @@ plus_button.png                    112x112
 - dark sci-fi metal style 유지
 - 기존 user-created asset은 삭제하거나 교체하지 않는다.
 - asset을 추가하면 `pubspec.yaml` 등록 필요 여부를 확인한다.
+- icon-only utility asset은 바깥 배경 alpha 0 투명 PNG여야 한다.
 
 예외:
 
