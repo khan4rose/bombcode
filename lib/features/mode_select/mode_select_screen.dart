@@ -7,6 +7,9 @@ import '../../domain/enums/limit_mode.dart';
 import '../../domain/models/game_config.dart';
 import '../game/game_screen.dart';
 
+const _attemptValues = [7, 10, 13, 15, 20];
+const _timeValues = [0, 5, 10, 20];
+
 class ModeSelectScreen extends StatefulWidget {
   const ModeSelectScreen({super.key});
 
@@ -18,12 +21,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
   Difficulty _difficulty = Difficulty.beginner;
   int _attempts = 20;
   int _timeIndex = 0;
-  double _sound = 0.7;
-  double _music = 0.5;
-  bool _vibration = true;
   bool _autoCheckTable = true;
-
-  static const _timeValues = [0, 5, 10, 15, 20];
 
   @override
   void initState() {
@@ -34,7 +32,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
   void _applyDifficultyDefaults(Difficulty difficulty) {
     final defaults = GameConfig.defaults(difficulty);
     _difficulty = difficulty;
-    _attempts = defaults.maxAttempts ?? 20;
+    _attempts = _nearestValue(_attemptValues, defaults.maxAttempts ?? 20);
     _timeIndex = 0;
     _autoCheckTable = defaults.autoCheckTable;
   }
@@ -64,76 +62,83 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             final height = constraints.maxHeight;
+            final width = constraints.maxWidth;
+            final horizontalPadding = (width * 0.055).clamp(16.0, 24.0);
+            final verticalPadding = (height * 0.012).clamp(8.0, 12.0);
+            final topToDifficultyGap = (height * 0.022).clamp(13.0, 18.0);
+            final sectionGap = (height * 0.03).clamp(18.0, 26.0);
+            final limitSectionGap = (sectionGap * 2).clamp(36.0, 52.0);
+            final topHeight = (height * 0.12).clamp(78.0, 98.0);
+            final difficultyHeight = (height * 0.108).clamp(66.0, 88.0);
+            final summaryHeight = (height * 0.115).clamp(68.0, 96.0);
+            final limitHeight = (height * 0.335).clamp(220.0, 270.0);
+            final startButtonHeight = (height * 0.082).clamp(44.0, 68.0);
+
             return Stack(
               fit: StackFit.expand,
               children: [
                 const AppBackground(dim: true, child: SizedBox.expand()),
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: constraints.maxWidth * 0.055,
-                    vertical: height * 0.01,
-                  ),
-                  child: Column(
-                    children: [
-                      SizedBox(
-                        height: height * 0.115,
-                        child: _TopBar(
-                          onBack: () => Navigator.of(context).pop(),
-                        ),
+                Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 430),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding,
+                        vertical: verticalPadding,
                       ),
-                      SizedBox(
-                        height: height * 0.105,
-                        child: _DifficultySelector(
-                          selected: _difficulty,
-                          onChanged: (difficulty) => setState(
-                            () => _applyDifficultyDefaults(difficulty),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: height * 0.13,
-                        child: _DifficultySummary(config: config),
-                      ),
-                      SizedBox(
-                        height: height * 0.27,
-                        child: _LimitModePanel(
-                          attempts: _attempts,
-                          timeIndex: _timeIndex,
-                          onAttemptsChanged: (value) =>
-                              setState(() => _attempts = value),
-                          onTimeChanged: (value) =>
-                              setState(() => _timeIndex = value),
-                        ),
-                      ),
-                      SizedBox(
-                        height: height * 0.245,
-                        child: _OptionsPanel(
-                          sound: _sound,
-                          music: _music,
-                          vibration: _vibration,
-                          autoCheckTable: _autoCheckTable,
-                          onSoundChanged: (value) =>
-                              setState(() => _sound = value),
-                          onMusicChanged: (value) =>
-                              setState(() => _music = value),
-                          onVibrationChanged: (value) =>
-                              setState(() => _vibration = value),
-                          onAutoCheckChanged: (value) =>
-                              setState(() => _autoCheckTable = value),
-                        ),
-                      ),
-                      Expanded(
-                        child: Center(
-                          child: _StartMissionButton(
-                            onPressed: () => Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (_) => GameScreen(config: config),
+                      child: Column(
+                        children: [
+                          SizedBox(
+                            height: topHeight,
+                            child: Center(
+                              child: _TopBar(
+                                onBack: () => Navigator.of(context).pop(),
                               ),
                             ),
                           ),
-                        ),
+                          SizedBox(height: topToDifficultyGap),
+                          SizedBox(
+                            height: difficultyHeight,
+                            child: _DifficultySelector(
+                              selected: _difficulty,
+                              onChanged: (difficulty) => setState(
+                                () => _applyDifficultyDefaults(difficulty),
+                              ),
+                            ),
+                          ),
+                          SizedBox(height: sectionGap),
+                          SizedBox(
+                            height: summaryHeight,
+                            child: _DifficultySummary(config: config),
+                          ),
+                          SizedBox(height: limitSectionGap),
+                          SizedBox(
+                            height: limitHeight,
+                            child: _LimitModePanel(
+                              attempts: _attempts,
+                              timeIndex: _timeIndex,
+                              onAttemptsChanged: (value) =>
+                                  setState(() => _attempts = value),
+                              onTimeChanged: (value) =>
+                                  setState(() => _timeIndex = value),
+                            ),
+                          ),
+                          Expanded(
+                            child: Align(
+                              alignment: const Alignment(0, 0.35),
+                              child: _StartMissionButton(
+                                height: startButtonHeight,
+                                onPressed: () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) => GameScreen(config: config),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ],
@@ -156,12 +161,12 @@ class _TopBar extends StatelessWidget {
       alignment: Alignment.center,
       children: [
         Align(
-          alignment: Alignment.centerLeft,
+          alignment: const Alignment(0.96, 0.74),
           child: _ImageButton(
             assetName: 'back_button.png',
             onTap: onBack,
             icon: Icons.chevron_left_rounded,
-            size: 52,
+            size: 38,
           ),
         ),
         Column(
@@ -173,7 +178,7 @@ class _TopBar extends StatelessWidget {
                 AppText.missionSetup.toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 31,
+                  fontSize: 29,
                   fontWeight: FontWeight.w900,
                   shadows: [
                     Shadow(
@@ -192,7 +197,7 @@ class _TopBar extends StatelessWidget {
                 AppText.setChallenge.toUpperCase(),
                 style: const TextStyle(
                   color: Colors.white70,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -216,22 +221,25 @@ class _DifficultySelector extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionLabel(AppText.difficulty),
-        const SizedBox(height: 6),
+        const SizedBox(height: 12),
         Expanded(
-          child: Row(
-            children: [
-              for (final difficulty in Difficulty.values)
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 2),
-                    child: _DifficultyButton(
-                      difficulty: difficulty,
-                      selected: selected == difficulty,
-                      onTap: () => onChanged(difficulty),
+          child: FractionallySizedBox(
+            widthFactor: 1.05,
+            child: Row(
+              children: [
+                for (final difficulty in Difficulty.values)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 1),
+                      child: _DifficultyButton(
+                        difficulty: difficulty,
+                        selected: selected == difficulty,
+                        onTap: () => onChanged(difficulty),
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
@@ -269,31 +277,31 @@ class _DifficultyButton extends StatelessWidget {
             fallback: _MetalFrame(active: selected),
           ),
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  _difficultyIcon(difficulty),
-                  color: selected ? Colors.white : Colors.white70,
-                  size: 22,
-                ),
-                const SizedBox(width: 5),
-                Flexible(
-                  child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    child: Text(
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Center(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      _difficultyIcon(difficulty),
+                      color: selected ? Colors.white : Colors.white70,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
                       AppText.difficultyLabel(difficulty.name).toUpperCase(),
                       maxLines: 1,
                       style: TextStyle(
                         color: selected ? Colors.white : Colors.white70,
-                        fontSize: 17,
+                        fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ],
@@ -322,6 +330,9 @@ class _DifficultySummary extends StatelessWidget {
       Difficulty.normal => 200,
       Difficulty.expert => 300,
     };
+    final timeText = config.timeLimit == null
+        ? AppText.off.toUpperCase()
+        : _formatTimeLimit(config.timeLimit!.inMinutes);
 
     return _Panel(
       child: Row(
@@ -341,10 +352,8 @@ class _DifficultySummary extends StatelessWidget {
               assetName: 'timer_icon.png',
               fallbackIcon: Icons.timer_rounded,
               color: Colors.lightBlueAccent,
-              line1: AppText.noTimer.toUpperCase(),
-              line2: AppText.limitModeLabel(
-                config.limitMode.name,
-              ).toUpperCase(),
+              line1: AppText.timeLimit.toUpperCase(),
+              line2: timeText,
             ),
           ),
           const _ThinDivider(),
@@ -431,6 +440,13 @@ class _LimitModePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final attemptIndex = _indexForValue(_attemptValues, attempts);
+    final timeIndex = this.timeIndex.clamp(0, _timeValues.length - 1).toInt();
+    final attemptTicks = [for (final value in _attemptValues) value.toString()];
+    final timeTicks = [
+      for (final value in _timeValues) _formatTimeLimit(value),
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -438,133 +454,49 @@ class _LimitModePanel extends StatelessWidget {
         const SizedBox(height: 5),
         Expanded(
           child: _Panel(
+            padding: const EdgeInsets.fromLTRB(6, 8, 6, 9),
             child: Column(
               children: [
                 Expanded(
                   child: _CompactSliderRow(
                     fallbackIcon: Icons.shield_outlined,
                     title: AppText.attemptsLimit,
-                    valueText: '$attempts ${AppText.tries}'.toUpperCase(),
-                    min: 7,
-                    max: 20,
-                    value: attempts.toDouble(),
-                    ticks: const ['7', '10', '15', '20'],
-                    onMinus: () =>
-                        onAttemptsChanged((attempts - 1).clamp(7, 20).toInt()),
-                    onPlus: () =>
-                        onAttemptsChanged((attempts + 1).clamp(7, 20).toInt()),
-                    onChanged: (value) =>
-                        onAttemptsChanged(value.round().clamp(7, 20).toInt()),
+                    valueText:
+                        '${_attemptValues[attemptIndex]} ${AppText.tries}'
+                            .toUpperCase(),
+                    selectedIndex: attemptIndex,
+                    ticks: attemptTicks,
+                    onMinus: () => onAttemptsChanged(
+                      _attemptValues[(attemptIndex - 1)
+                          .clamp(0, _attemptValues.length - 1)
+                          .toInt()],
+                    ),
+                    onPlus: () => onAttemptsChanged(
+                      _attemptValues[(attemptIndex + 1)
+                          .clamp(0, _attemptValues.length - 1)
+                          .toInt()],
+                    ),
+                    onChanged: (index) =>
+                        onAttemptsChanged(_attemptValues[index]),
                   ),
                 ),
+                const SizedBox(height: 5),
+                const Divider(height: 1, color: Colors.white12),
+                const SizedBox(height: 5),
                 Expanded(
                   child: _CompactSliderRow(
                     fallbackIcon: Icons.timer_outlined,
                     title: AppText.timeLimit,
-                    valueText: _timeText,
-                    min: 0,
-                    max: 4,
-                    value: timeIndex.toDouble(),
-                    ticks: [
-                      AppText.off.toUpperCase(),
-                      '05:00',
-                      '10:00',
-                      '20:00',
-                    ],
-                    onMinus: () =>
-                        onTimeChanged((timeIndex - 1).clamp(0, 4).toInt()),
-                    onPlus: () =>
-                        onTimeChanged((timeIndex + 1).clamp(0, 4).toInt()),
-                    onChanged: (value) =>
-                        onTimeChanged(value.round().clamp(0, 4).toInt()),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String get _timeText {
-    final label = switch (timeIndex) {
-      0 => '00:00 ${AppText.off}',
-      1 => '05:00',
-      2 => '10:00',
-      3 => '15:00',
-      _ => '20:00',
-    };
-    return label.toUpperCase();
-  }
-}
-
-class _OptionsPanel extends StatelessWidget {
-  final double sound;
-  final double music;
-  final bool vibration;
-  final bool autoCheckTable;
-  final ValueChanged<double> onSoundChanged;
-  final ValueChanged<double> onMusicChanged;
-  final ValueChanged<bool> onVibrationChanged;
-  final ValueChanged<bool> onAutoCheckChanged;
-
-  const _OptionsPanel({
-    required this.sound,
-    required this.music,
-    required this.vibration,
-    required this.autoCheckTable,
-    required this.onSoundChanged,
-    required this.onMusicChanged,
-    required this.onVibrationChanged,
-    required this.onAutoCheckChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionLabel(AppText.options),
-        const SizedBox(height: 5),
-        Expanded(
-          child: _Panel(
-            child: Column(
-              children: [
-                Expanded(
-                  child: _VolumeRow(
-                    assetName: 'sound_icon.png',
-                    fallbackIcon: Icons.volume_up_rounded,
-                    label: AppText.sound,
-                    value: sound,
-                    onChanged: onSoundChanged,
-                  ),
-                ),
-                Expanded(
-                  child: _VolumeRow(
-                    assetName: 'music_icon.png',
-                    fallbackIcon: Icons.music_note_rounded,
-                    label: AppText.music,
-                    value: music,
-                    onChanged: onMusicChanged,
-                  ),
-                ),
-                Expanded(
-                  child: _ToggleRow(
-                    assetName: 'vibration_icon.png',
-                    fallbackIcon: Icons.vibration_rounded,
-                    label: AppText.vibration,
-                    value: vibration,
-                    onChanged: onVibrationChanged,
-                  ),
-                ),
-                Expanded(
-                  child: _ToggleRow(
-                    assetName: 'check_table_icon.png',
-                    fallbackIcon: Icons.fact_check_rounded,
-                    label: AppText.checkTable,
-                    value: autoCheckTable,
-                    onChanged: onAutoCheckChanged,
+                    valueText: _formatTimeLimit(_timeValues[timeIndex]),
+                    selectedIndex: timeIndex,
+                    ticks: timeTicks,
+                    onMinus: () => onTimeChanged(
+                      (timeIndex - 1).clamp(0, _timeValues.length - 1).toInt(),
+                    ),
+                    onPlus: () => onTimeChanged(
+                      (timeIndex + 1).clamp(0, _timeValues.length - 1).toInt(),
+                    ),
+                    onChanged: onTimeChanged,
                   ),
                 ),
               ],
@@ -580,21 +512,17 @@ class _CompactSliderRow extends StatelessWidget {
   final IconData fallbackIcon;
   final String title;
   final String valueText;
-  final double min;
-  final double max;
-  final double value;
+  final int selectedIndex;
   final List<String> ticks;
   final VoidCallback onMinus;
   final VoidCallback onPlus;
-  final ValueChanged<double> onChanged;
+  final ValueChanged<int> onChanged;
 
   const _CompactSliderRow({
     required this.fallbackIcon,
     required this.title,
     required this.valueText,
-    required this.min,
-    required this.max,
-    required this.value,
+    required this.selectedIndex,
     required this.ticks,
     required this.onMinus,
     required this.onPlus,
@@ -604,11 +532,12 @@ class _CompactSliderRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Icon(fallbackIcon, color: Colors.white70, size: 18),
+            Icon(fallbackIcon, color: Colors.white70, size: 19),
             const SizedBox(width: 6),
             Expanded(
               child: Text(
@@ -617,50 +546,65 @@ class _CompactSliderRow extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 13,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w800,
                 ),
               ),
             ),
-            Text(
-              valueText,
-              style: const TextStyle(
-                color: Colors.redAccent,
-                fontSize: 13,
-                fontWeight: FontWeight.w900,
+            const SizedBox(width: 4),
+            Container(
+              constraints: const BoxConstraints(minWidth: 60),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: const Color(0xFF170607),
+                borderRadius: BorderRadius.circular(5),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.45),
+                ),
+              ),
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  valueText,
+                  maxLines: 1,
+                  style: const TextStyle(
+                    color: Colors.redAccent,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 2),
         Row(
           children: [
             _ImageButton(
               assetName: 'minus_button.png',
               onTap: onMinus,
               icon: Icons.remove_rounded,
-              size: 34,
+              size: 30,
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 3),
             Expanded(
               child: _AssetSlider(
-                min: min,
-                max: max,
-                value: value,
+                itemCount: ticks.length,
+                selectedIndex: selectedIndex,
                 onChanged: onChanged,
               ),
             ),
-            const SizedBox(width: 6),
+            const SizedBox(width: 3),
             _ImageButton(
               assetName: 'plus_button.png',
               onTap: onPlus,
               icon: Icons.add_rounded,
-              size: 34,
+              size: 30,
             ),
           ],
         ),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 44),
+          padding: const EdgeInsets.symmetric(horizontal: 33),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -669,7 +613,7 @@ class _CompactSliderRow extends StatelessWidget {
                   tick,
                   style: const TextStyle(
                     color: Colors.white60,
-                    fontSize: 10,
+                    fontSize: 10.5,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -681,162 +625,18 @@ class _CompactSliderRow extends StatelessWidget {
   }
 }
 
-class _VolumeRow extends StatelessWidget {
-  final String assetName;
-  final IconData fallbackIcon;
-  final String label;
-  final double value;
-  final ValueChanged<double> onChanged;
-
-  const _VolumeRow({
-    required this.assetName,
-    required this.fallbackIcon,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 28,
-          height: 28,
-          child: _MissionAsset(
-            name: assetName,
-            fallback: Icon(fallbackIcon, color: Colors.redAccent, size: 26),
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 82,
-          child: Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        Expanded(
-          child: _AssetSlider(
-            min: 0,
-            max: 1,
-            value: value,
-            onChanged: onChanged,
-          ),
-        ),
-        const SizedBox(width: 8),
-        SizedBox(
-          width: 42,
-          child: Text(
-            '${(value * 100).round()}%',
-            textAlign: TextAlign.end,
-            style: const TextStyle(
-              color: Colors.redAccent,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _ToggleRow extends StatelessWidget {
-  final String assetName;
-  final IconData fallbackIcon;
-  final String label;
-  final bool value;
-  final ValueChanged<bool> onChanged;
-
-  const _ToggleRow({
-    required this.assetName,
-    required this.fallbackIcon,
-    required this.label,
-    required this.value,
-    required this.onChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 28,
-          height: 28,
-          child: _MissionAsset(
-            name: assetName,
-            fallback: Icon(fallbackIcon, color: Colors.redAccent, size: 26),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            label.toUpperCase(),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 13,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: () => onChanged(!value),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 140),
-            width: 74,
-            height: 30,
-            alignment: value ? Alignment.centerRight : Alignment.centerLeft,
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: value ? const Color(0xFF9A1515) : Colors.black87,
-              borderRadius: BorderRadius.circular(6),
-              border: Border.all(color: Colors.white30),
-            ),
-            child: Container(
-              width: 36,
-              height: 24,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: const Color(0xFF24282B),
-                borderRadius: BorderRadius.circular(5),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Text(
-                value ? AppText.on.toUpperCase() : AppText.off.toUpperCase(),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class _StartMissionButton extends StatelessWidget {
+  final double height;
   final VoidCallback onPressed;
 
-  const _StartMissionButton({required this.onPressed});
+  const _StartMissionButton({required this.height, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onPressed,
       child: SizedBox(
-        height: 72,
+        height: height,
         width: double.infinity,
         child: Stack(
           fit: StackFit.expand,
@@ -846,18 +646,18 @@ class _StartMissionButton extends StatelessWidget {
               fit: BoxFit.fill,
               fallback: const _MetalFrame(active: true, red: true),
             ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.key_rounded, color: Colors.white, size: 24),
-                const SizedBox(width: 10),
-                FittedBox(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 28),
+              child: Center(
+                child: FittedBox(
                   fit: BoxFit.scaleDown,
                   child: Text(
                     AppText.startMission.toUpperCase(),
+                    maxLines: 1,
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 25,
+                      fontSize: 20,
                       fontWeight: FontWeight.w900,
                       shadows: [
                         Shadow(
@@ -869,7 +669,7 @@ class _StartMissionButton extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
+              ),
             ),
           ],
         ),
@@ -879,15 +679,13 @@ class _StartMissionButton extends StatelessWidget {
 }
 
 class _AssetSlider extends StatelessWidget {
-  final double min;
-  final double max;
-  final double value;
-  final ValueChanged<double> onChanged;
+  final int itemCount;
+  final int selectedIndex;
+  final ValueChanged<int> onChanged;
 
   const _AssetSlider({
-    required this.min,
-    required this.max,
-    required this.value,
+    required this.itemCount,
+    required this.selectedIndex,
     required this.onChanged,
   });
 
@@ -895,7 +693,8 @@ class _AssetSlider extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final percent = ((value - min) / (max - min)).clamp(0.0, 1.0);
+        final lastIndex = itemCount - 1;
+        final percent = lastIndex <= 0 ? 0.0 : selectedIndex / lastIndex;
         final thumbLeft = (constraints.maxWidth - 20) * percent;
 
         return GestureDetector(
@@ -934,7 +733,7 @@ class _AssetSlider extends StatelessWidget {
                       color: Colors.redAccent,
                       borderRadius: BorderRadius.circular(4),
                       boxShadow: const [
-                        BoxShadow(color: Colors.redAccent, blurRadius: 8),
+                        BoxShadow(color: Color(0x99FF5252), blurRadius: 5),
                       ],
                     ),
                   ),
@@ -966,7 +765,9 @@ class _AssetSlider extends StatelessWidget {
 
   void _update(double dx, double width) {
     final percent = (dx / width).clamp(0.0, 1.0);
-    onChanged(min + (max - min) * percent);
+    onChanged(
+      (percent * (itemCount - 1)).round().clamp(0, itemCount - 1).toInt(),
+    );
   }
 }
 
@@ -1011,20 +812,22 @@ class _SectionLabel extends StatelessWidget {
 
   const _SectionLabel(this.label);
 
+  static const _style = TextStyle(
+    color: Colors.white,
+    fontSize: 17,
+    fontWeight: FontWeight.w900,
+    letterSpacing: 0,
+    height: 1.0,
+  );
+
   @override
   Widget build(BuildContext context) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(width: 5, height: 20, color: Colors.redAccent),
         const SizedBox(width: 7),
-        Text(
-          label.toUpperCase(),
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
+        Text(label.toUpperCase(), style: _style),
         const SizedBox(width: 8),
         const Expanded(child: Divider(color: Colors.white24, height: 1)),
       ],
@@ -1034,13 +837,14 @@ class _SectionLabel extends StatelessWidget {
 
 class _Panel extends StatelessWidget {
   final Widget child;
+  final EdgeInsetsGeometry padding;
 
-  const _Panel({required this.child});
+  const _Panel({required this.child, this.padding = const EdgeInsets.all(9)});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(9),
+      padding: padding,
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(8),
@@ -1139,6 +943,35 @@ class _MetalFallbackBackground extends StatelessWidget {
       child: CustomPaint(painter: _FramePainter()),
     );
   }
+}
+
+int _indexForValue(List<int> values, int value) {
+  final exactIndex = values.indexOf(value);
+  if (exactIndex != -1) {
+    return exactIndex;
+  }
+
+  var nearestIndex = 0;
+  var nearestDistance = (values.first - value).abs();
+  for (var i = 1; i < values.length; i++) {
+    final distance = (values[i] - value).abs();
+    if (distance < nearestDistance) {
+      nearestIndex = i;
+      nearestDistance = distance;
+    }
+  }
+  return nearestIndex;
+}
+
+int _nearestValue(List<int> values, int value) {
+  return values[_indexForValue(values, value)];
+}
+
+String _formatTimeLimit(int minutes) {
+  if (minutes == 0) {
+    return AppText.off.toUpperCase();
+  }
+  return '${minutes.toString().padLeft(2, '0')}:00';
 }
 
 class _FramePainter extends CustomPainter {

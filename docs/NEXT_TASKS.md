@@ -18,7 +18,7 @@
 
 ### Task 1.0 Android viewport metrics 반복 / 자동 종료 원인 확인
 
-상태: TODO
+상태: WATCH
 
 목표:
 
@@ -29,6 +29,8 @@
 - Home 화면 하단 icon-only 버튼 전환 이후 emulator에서 viewport metrics 반복과 device connection lost가 보고되었다.
 - `SafeArea(bottom: false)`와 `MediaQuery.removePadding(removeBottom: true)`를 Home 화면에 적용해 보았으나 해결되지 않아 롤백했다.
 - 하단 icon asset은 `196x196` 투명 PNG이며, 코드에서는 터치 영역과 보이는 icon size를 분리했다.
+- 2026-05-05: `android:windowSoftInputMode`를 `adjustResize`에서 `adjustNothing`으로 변경했다. 이후 사용자가 현재 정상 작동을 확인했다.
+- 재발 시 logcat에서 `FATAL EXCEPTION`, `AndroidRuntime`, `SIG`, `WindowInsets`, `FlutterJNI`, `com.example.bombcode` 기준으로 다시 확인한다.
 
 작업 체크리스트:
 
@@ -150,7 +152,7 @@ assets/menu/menu_help_icon.png
 
 ### Task 2.1 Mission Setup Asset Visual QA
 
-상태: TODO
+상태: DONE / WATCH
 
 목표:
 
@@ -164,10 +166,12 @@ assets/mission_setup/
 
 작업 체크리스트:
 
-- [ ] 모든 asset이 transparent PNG인지 확인
-- [ ] 사용자 요청 없이 text, letters, numbers, `+`, `-`가 이미지에 bake되지 않았는지 확인
-- [ ] dark sci-fi metal style과 어울리지 않는 asset을 교체 후보로 표시
-- [ ] 실제 교체가 필요하면 사용자 요청 범위 안에서만 수정
+- [x] `slider_track.png`의 과도한 좌우 투명 여백을 제거하고 visible track을 canvas 대부분으로 확장
+- [x] `difficulty_*_on.png` 3개를 사용자가 제공한 `D:\download\New_button.png` 기반 asset으로 교체
+- [x] `difficulty_*_off.png` 3개를 사용자가 제공한 `D:\download\New_off.png` 기반 asset으로 교체
+- [x] off button은 외부 검은 배경만 투명 처리하고, 프레임 내부 dark panel 색/질감은 보존
+- [x] 버튼 텍스트는 이미지에 bake하지 않고 Flutter `Text` 유지
+- [ ] 실제 기기/에뮬레이터에서 selected/off 버튼 대비, 투명 가장자리, 텍스트 가독성 최종 확인
 
 수정 금지:
 
@@ -178,7 +182,7 @@ assets/mission_setup/
 
 ### Task 2.2 Mission Setup Layout Fine Tuning
 
-상태: TODO
+상태: DONE
 
 목표:
 
@@ -188,16 +192,24 @@ assets/mission_setup/
 
 ```text
 lib/features/mode_select/mode_select_screen.dart
+lib/features/settings/settings_screen.dart
 ```
 
 작업 체크리스트:
 
-- [ ] 현재 파일 내용을 읽는다.
-- [ ] `LayoutBuilder`를 유지한다.
-- [ ] 공통 배경 `assets/menu/background.png`를 유지한다.
-- [ ] 모든 text는 Flutter widget으로 렌더링한다.
-- [ ] 단일 화면 non-scroll 구조를 유지한다.
-- [ ] 작은 화면 overflow 여부를 확인한다.
+- [x] 현재 파일 내용을 읽는다.
+- [x] `LayoutBuilder`를 유지한다.
+- [x] 공통 배경 `assets/menu/background.png`를 유지한다.
+- [x] 모든 text는 Flutter widget으로 렌더링한다.
+- [x] 단일 화면 non-scroll 구조를 유지한다.
+- [x] 작은 화면 overflow 위험을 줄이도록 responsive section/button sizing을 조정한다.
+- [x] Section title style을 DIFFICULTY / LIMIT MODE 공통 스타일로 통일
+- [x] Difficulty button 내부 불필요한 작은 사각형 제거
+- [x] Time summary card를 `TIME LIMIT / OFF` 또는 실제 시간 값으로 표시
+- [x] Attempts/Time slider의 badge, tick, thumb 위치를 단일 값 리스트 기준으로 동기화
+- [x] Difficulty / Limit Mode 영역 위치와 간격을 사용자 피드백 기준으로 아래쪽에 재배치
+- [x] Start Mission 버튼의 key icon 제거 및 텍스트 중앙 정렬
+- 완료 메모: Mission Setup의 back icon을 title block 오른쪽 아래로 이동하고, difficulty button 크기/간격/두께, LIMIT MODE 위치/간격, Attempts/Time slider 동기화, Start Mission 텍스트 정렬을 미세 조정했다.
 
 수정 금지:
 
@@ -426,5 +438,5 @@ assets/  # 필요한 경우만
 ## 다음 Codex 작업 후보
 
 1. `Task 2.0` 메인 메뉴 화면 QA 결과를 기준으로 레이아웃 또는 에셋 정리
-2. `Task 2.2` 미션 설정 화면 overflow/비율 미세 조정
+2. `Task 2.3` 미션 설정 화면 widget 분리
 3. `Task 3.1` 게임 화면 에셋 목록과 레이아웃 계획 문서화

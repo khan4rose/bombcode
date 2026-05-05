@@ -4,8 +4,18 @@ import '../../core/constants/app_text.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/app_background.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  double _sound = 0.7;
+  double _music = 0.5;
+  bool _vibration = true;
+  bool _checkTable = true;
 
   @override
   Widget build(BuildContext context) {
@@ -25,6 +35,40 @@ class SettingsScreen extends StatelessWidget {
           child: ListView(
             padding: EdgeInsets.all(r.c(18)),
             children: [
+              Text(
+                AppText.options.toUpperCase(),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              SizedBox(height: r.c(8)),
+              _VolumeSettingTile(
+                icon: Icons.volume_up_rounded,
+                title: AppText.sound,
+                value: _sound,
+                onChanged: (value) => setState(() => _sound = value),
+              ),
+              _VolumeSettingTile(
+                icon: Icons.music_note_rounded,
+                title: AppText.music,
+                value: _music,
+                onChanged: (value) => setState(() => _music = value),
+              ),
+              _SwitchSettingTile(
+                icon: Icons.vibration_rounded,
+                title: AppText.vibration,
+                value: _vibration,
+                onChanged: (value) => setState(() => _vibration = value),
+              ),
+              _SwitchSettingTile(
+                icon: Icons.fact_check_rounded,
+                title: AppText.checkTable,
+                value: _checkTable,
+                onChanged: (value) => setState(() => _checkTable = value),
+              ),
+              SizedBox(height: r.c(14)),
+              const Divider(color: Colors.white24),
               ListTile(
                 leading: const Icon(Icons.language_rounded),
                 title: Text(AppText.isKo ? '언어' : 'Language'),
@@ -52,6 +96,71 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _VolumeSettingTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final double value;
+  final ValueChanged<double> onChanged;
+
+  const _VolumeSettingTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(icon, color: Colors.redAccent),
+      title: Text(title),
+      subtitle: Slider(
+        value: value,
+        onChanged: onChanged,
+        activeColor: Colors.redAccent,
+        inactiveColor: Colors.white24,
+      ),
+      trailing: SizedBox(
+        width: 44,
+        child: Text(
+          '${(value * 100).round()}%',
+          textAlign: TextAlign.end,
+          style: const TextStyle(
+            color: Colors.redAccent,
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SwitchSettingTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+
+  const _SwitchSettingTile({
+    required this.icon,
+    required this.title,
+    required this.value,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SwitchListTile(
+      secondary: Icon(icon, color: Colors.redAccent),
+      title: Text(title),
+      value: value,
+      onChanged: onChanged,
+      activeThumbColor: Colors.redAccent,
+      activeTrackColor: Colors.redAccent.withValues(alpha: 0.35),
     );
   }
 }
