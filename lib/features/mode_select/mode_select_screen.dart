@@ -70,7 +70,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
             final limitSectionGap = (sectionGap * 2).clamp(36.0, 52.0);
             final topHeight = (height * 0.12).clamp(78.0, 98.0);
             final difficultyHeight = (height * 0.108).clamp(66.0, 88.0);
-            final summaryHeight = (height * 0.115).clamp(68.0, 96.0);
+            final summaryHeight = (height * 0.148).clamp(90.0, 122.0);
             final limitHeight = (height * 0.335).clamp(220.0, 270.0);
             final startButtonHeight = (height * 0.082).clamp(44.0, 68.0);
 
@@ -335,6 +335,7 @@ class _DifficultySummary extends StatelessWidget {
         : _formatTimeLimit(config.timeLimit!.inMinutes);
 
     return _Panel(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       child: Row(
         children: [
           Expanded(
@@ -395,19 +396,19 @@ class _SummaryColumn extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           SizedBox(
-            width: 34,
-            height: 34,
+            width: 42,
+            height: 42,
             child: _MissionAsset(
               name: assetName,
-              fallback: Icon(fallbackIcon, color: color, size: 32),
+              fallback: Icon(fallbackIcon, color: color, size: 40),
             ),
           ),
-          const SizedBox(height: 5),
+          const SizedBox(height: 6),
           Text(
             line1,
             style: TextStyle(
               color: color,
-              fontSize: 15,
+              fontSize: 16.5,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -415,7 +416,7 @@ class _SummaryColumn extends StatelessWidget {
             line2,
             style: TextStyle(
               color: color,
-              fontSize: 14,
+              fontSize: 15.5,
               fontWeight: FontWeight.w800,
             ),
           ),

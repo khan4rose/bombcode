@@ -63,6 +63,7 @@
 - Android emulator may show repeated `WindowInsets changed`, `FlutterJNI: Sending viewport metrics`, and `Lost connection to device`.
 - Previous trial with `SafeArea(bottom:false)` and `MediaQuery.removePadding` did not solve it and was rolled back.
 - 2026-05-05: `android:windowSoftInputMode` was changed from `adjustResize` to `adjustNothing`; user later reported the app is currently running normally.
+- 2026-05-06: emulator showed `vendor.mesa.virtgpu.kumquat` and `Lost connection to device`; user confirmed `flutter run --enable-software-rendering` runs normally, so emulator GPU/virtgpu instability is likely.
 - Do not assume this is only a Flutter layout issue. Check Android window/insets logs if it recurs.
 
 ### UI Risks
@@ -206,6 +207,7 @@ lib/domain/models/game_config.dart
 - Difficulty selected/off assets were rebuilt from user-provided `D:\download\New_button.png` and `D:\download\New_off.png`.
 - Attempts/Time slider badge, ticks, and thumb position should stay synchronized from one source list.
 - Start Mission button has no key icon; text is centered.
+- Digits / Timer / Reward summary card has enlarged icons, text, padding, and height.
 
 ---
 
@@ -271,8 +273,9 @@ If time is enabled:
 ### 2026-05-05 Snapshot Correction
 
 - Task 1.0 Android viewport metrics repeat / auto-exit check: WATCH after `android:windowSoftInputMode="adjustNothing"`; user reported current run is normal.
+- Task 1.0 update: if emulator GPU/virtgpu logs recur, try `flutter run --enable-software-rendering`; this was confirmed normal on 2026-05-06.
 - Task 2.1 Mission Setup Asset Visual QA: DONE / WATCH after slider track padding fix and difficulty on/off asset rebuild.
-- Task 2.2 Mission Setup Layout Fine Tuning: DONE after spacing, slider sync, summary time display, and Start Mission text alignment updates.
+- Task 2.2 Mission Setup Layout Fine Tuning: DONE after spacing, slider sync, summary time display, summary card enlargement, and Start Mission text alignment updates.
 
 ---
 
@@ -391,8 +394,8 @@ Additional manual steps:
 ### Latest Result
 
 - Changed Files: `lib/features/mode_select/mode_select_screen.dart`, `assets/mission_setup/slider_track.png`, `assets/mission_setup/difficulty_beginner_on.png`, `assets/mission_setup/difficulty_normal_on.png`, `assets/mission_setup/difficulty_expert_on.png`, `assets/mission_setup/difficulty_beginner_off.png`, `assets/mission_setup/difficulty_normal_off.png`, `assets/mission_setup/difficulty_expert_off.png`, `android/app/src/main/AndroidManifest.xml`, `docs/NEXT_TASKS.md`, `docs/PROJECT_STATUS.md`, `docs/MASTER_CONTEXT.md`
-- Summary: Mission Setup slider track transparent padding was removed. Difficulty selected/off frames were rebuilt from user-provided button art with transparent outer background and preserved inner dark panel. Section title style, summary time display, slider value/tick/thumb synchronization, Difficulty/LIMIT MODE spacing, and Start Mission text alignment were tuned while preserving non-scroll LayoutBuilder structure and gameplay behavior.
-- Remaining Issues: Final visual QA on real/emulated devices is still needed. Android viewport metrics issue is currently normal after `adjustNothing`, but should be watched if it recurs. Task 2.3 widget split remains pending.
+- Summary: Mission Setup slider track transparent padding was removed. Difficulty selected/off frames were rebuilt from user-provided button art with transparent outer background and preserved inner dark panel. Section title style, summary time display, summary card icon/text/card size, slider value/tick/thumb synchronization, Difficulty/LIMIT MODE spacing, and Start Mission text alignment were tuned while preserving non-scroll LayoutBuilder structure and gameplay behavior.
+- Remaining Issues: Final visual QA on real/emulated devices is still needed. Android viewport metrics issue is currently normal after `adjustNothing`; emulator GPU/virtgpu disconnect was normal with `--enable-software-rendering` and should be watched if it recurs. Task 2.3 widget split remains pending.
 - User Commands To Run: `dart format .`, `flutter analyze`, `flutter test`, `flutter run`
 
 ---

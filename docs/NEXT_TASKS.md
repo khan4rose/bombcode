@@ -30,6 +30,7 @@
 - `SafeArea(bottom: false)`와 `MediaQuery.removePadding(removeBottom: true)`를 Home 화면에 적용해 보았으나 해결되지 않아 롤백했다.
 - 하단 icon asset은 `196x196` 투명 PNG이며, 코드에서는 터치 영역과 보이는 icon size를 분리했다.
 - 2026-05-05: `android:windowSoftInputMode`를 `adjustResize`에서 `adjustNothing`으로 변경했다. 이후 사용자가 현재 정상 작동을 확인했다.
+- 2026-05-06: emulator에서 `vendor.mesa.virtgpu.kumquat`, `Lost connection to device`가 재발했으나 `flutter run --enable-software-rendering`으로 정상 작동을 확인했다. 코드 문제보다 emulator GPU/virtgpu 이슈 가능성이 높다.
 - 재발 시 logcat에서 `FATAL EXCEPTION`, `AndroidRuntime`, `SIG`, `WindowInsets`, `FlutterJNI`, `com.example.bombcode` 기준으로 다시 확인한다.
 
 작업 체크리스트:
@@ -59,6 +60,7 @@ flutter clean
 flutter pub get
 flutter run
 flutter run -v
+flutter run --enable-software-rendering
 ```
 
 ### Task 1.1 Analyze/Test 이슈 수정
@@ -209,7 +211,8 @@ lib/features/settings/settings_screen.dart
 - [x] Attempts/Time slider의 badge, tick, thumb 위치를 단일 값 리스트 기준으로 동기화
 - [x] Difficulty / Limit Mode 영역 위치와 간격을 사용자 피드백 기준으로 아래쪽에 재배치
 - [x] Start Mission 버튼의 key icon 제거 및 텍스트 중앙 정렬
-- 완료 메모: Mission Setup의 back icon을 title block 오른쪽 아래로 이동하고, difficulty button 크기/간격/두께, LIMIT MODE 위치/간격, Attempts/Time slider 동기화, Start Mission 텍스트 정렬을 미세 조정했다.
+- [x] Digits / Timer / Reward summary card 영역, 아이콘, 텍스트 크기 확대
+- 완료 메모: Mission Setup의 back icon을 title block 오른쪽 아래로 이동하고, difficulty button 크기/간격/두께, summary card 크기, LIMIT MODE 위치/간격, Attempts/Time slider 동기화, Start Mission 텍스트 정렬을 미세 조정했다.
 
 수정 금지:
 
