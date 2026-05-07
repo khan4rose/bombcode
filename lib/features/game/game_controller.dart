@@ -7,7 +7,6 @@ import '../../core/utils/judge_code.dart';
 import '../../domain/enums/digit_mark.dart';
 import '../../domain/enums/game_over_reason.dart';
 import '../../domain/enums/game_status.dart';
-import '../../domain/enums/limit_mode.dart';
 import '../../domain/models/game_config.dart';
 import '../../domain/models/game_record.dart';
 import '../../domain/models/guess_record.dart';
@@ -30,8 +29,8 @@ class GameController extends ChangeNotifier {
 
   bool get isComplete =>
       config != null && currentGuess.length == config!.codeLength;
-  bool get usesAttempts => config?.limitMode != LimitMode.timeOnly;
-  bool get usesTime => config?.limitMode != LimitMode.attemptsOnly;
+  bool get usesAttempts => config?.maxAttempts != null;
+  bool get usesTime => config?.timeLimit != null;
   bool get canSubmit => status == GameStatus.playing && isComplete;
 
   void start(GameConfig config) {
@@ -43,12 +42,8 @@ class GameController extends ChangeNotifier {
     digitMarks = {
       for (var digit = 0; digit <= 9; digit++) digit: DigitMark.unknown,
     };
-    remainingAttempts = config.limitMode == LimitMode.timeOnly
-        ? null
-        : config.maxAttempts;
-    remainingSeconds = config.limitMode == LimitMode.attemptsOnly
-        ? null
-        : config.timeLimit?.inSeconds;
+    remainingAttempts = config.maxAttempts;
+    remainingSeconds = config.timeLimit?.inSeconds;
     elapsedSeconds = 0;
     gameOverReason = null;
     status = GameStatus.playing;

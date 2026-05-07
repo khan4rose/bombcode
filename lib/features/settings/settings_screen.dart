@@ -1,6 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_text.dart';
+import '../../core/feedback/game_haptics.dart';
+import '../../core/utils/game_sound_effects.dart';
 import '../../core/utils/responsive.dart';
 import '../../core/widgets/app_background.dart';
 
@@ -16,6 +20,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   double _music = 0.5;
   bool _vibration = true;
   bool _checkTable = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSoundSetting();
+    _loadVibrationSetting();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.volume_up_rounded,
                 title: AppText.sound,
                 value: _sound,
-                onChanged: (value) => setState(() => _sound = value),
+                onChanged: _setSound,
               ),
               _VolumeSettingTile(
                 icon: Icons.music_note_rounded,
@@ -59,7 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: Icons.vibration_rounded,
                 title: AppText.vibration,
                 value: _vibration,
-                onChanged: (value) => setState(() => _vibration = value),
+                onChanged: _setVibration,
               ),
               _SwitchSettingTile(
                 icon: Icons.fact_check_rounded,
@@ -97,6 +108,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadSoundSetting() async {
+    final sound = await GameSoundEffects.instance.loadSoundVolume();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _sound = sound);
+  }
+
+  void _setSound(double value) {
+    setState(() => _sound = value);
+    unawaited(GameSoundEffects.instance.saveSoundVolume(value));
+  }
+
+  Future<void> _loadVibrationSetting() async {
+    final enabled = await GameHaptics.instance.loadEnabled();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _vibration = enabled);
+  }
+
+  void _setVibration(bool enabled) {
+    setState(() => _vibration = enabled);
+    unawaited(GameHaptics.instance.saveEnabled(enabled));
   }
 }
 

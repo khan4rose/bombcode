@@ -1,13 +1,15 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_text.dart';
 import '../../core/widgets/app_background.dart';
+import '../../data/local_game_config_repository.dart';
 import '../../domain/enums/difficulty.dart';
-import '../../domain/enums/limit_mode.dart';
 import '../../domain/models/game_config.dart';
 import '../game/game_screen.dart';
 
-const _attemptValues = [7, 10, 13, 15, 20];
+const _attemptValues = [0, 7, 10, 13, 15, 20];
 const _timeValues = [0, 5, 10, 20];
 
 class ModeSelectScreen extends StatefulWidget {
@@ -18,21 +20,22 @@ class ModeSelectScreen extends StatefulWidget {
 }
 
 class _ModeSelectScreenState extends State<ModeSelectScreen> {
-  Difficulty _difficulty = Difficulty.beginner;
-  int _attempts = 20;
+  final _configRepository = LocalGameConfigRepository();
+  Difficulty _difficulty = Difficulty.normal;
+  int _attempts = 0;
   int _timeIndex = 0;
   bool _autoCheckTable = true;
 
   @override
   void initState() {
     super.initState();
-    _applyDifficultyDefaults(_difficulty);
+    unawaited(_loadLastConfig());
   }
 
   void _applyDifficultyDefaults(Difficulty difficulty) {
     final defaults = GameConfig.defaults(difficulty);
     _difficulty = difficulty;
-    _attempts = _nearestValue(_attemptValues, defaults.maxAttempts ?? 20);
+    _attempts = _nearestValue(_attemptValues, defaults.maxAttempts ?? 0);
     _timeIndex = 0;
     _autoCheckTable = defaults.autoCheckTable;
   }
@@ -40,14 +43,11 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
   GameConfig get _config {
     final defaults = GameConfig.defaults(_difficulty);
     final timeMinutes = _timeValues[_timeIndex];
-    return GameConfig(
+    return GameConfig.fromLimits(
       difficulty: _difficulty,
       codeLength: defaults.codeLength,
-      maxAttempts: _attempts,
+      maxAttempts: _attempts == 0 ? null : _attempts,
       timeLimit: timeMinutes == 0 ? null : Duration(minutes: timeMinutes),
-      limitMode: timeMinutes == 0
-          ? LimitMode.attemptsOnly
-          : LimitMode.attemptsAndTime,
       autoCheckTable: _autoCheckTable,
     );
   }
@@ -128,11 +128,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
                               alignment: const Alignment(0, 0.35),
                               child: _StartMissionButton(
                                 height: startButtonHeight,
-                                onPressed: () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) => GameScreen(config: config),
-                                  ),
-                                ),
+                                onPressed: () => _startMission(config),
                               ),
                             ),
                           ),
@@ -147,6 +143,32 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _loadLastConfig() async {
+    final config = await _configRepository.loadLastConfig();
+    if (!mounted) {
+      return;
+    }
+    setState(() => _applyConfig(config));
+  }
+
+  void _applyConfig(GameConfig config) {
+    _difficulty = config.difficulty;
+    _attempts = _nearestValue(_attemptValues, config.maxAttempts ?? 0);
+    final minutes = config.timeLimit?.inMinutes ?? 0;
+    _timeIndex = _indexForValue(_timeValues, minutes);
+    _autoCheckTable = config.autoCheckTable;
+  }
+
+  Future<void> _startMission(GameConfig config) async {
+    await _configRepository.saveLastConfig(config);
+    if (!mounted) {
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => GameScreen(config: config)));
   }
 }
 
@@ -333,6 +355,9 @@ class _DifficultySummary extends StatelessWidget {
     final timeText = config.timeLimit == null
         ? AppText.off.toUpperCase()
         : _formatTimeLimit(config.timeLimit!.inMinutes);
+    final attemptsText = config.maxAttempts == null
+        ? AppText.off.toUpperCase()
+        : '${config.maxAttempts} ${AppText.tries}'.toUpperCase();
 
     return _Panel(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -344,7 +369,7 @@ class _DifficultySummary extends StatelessWidget {
               fallbackIcon: Icons.layers_rounded,
               color: Colors.lightGreenAccent,
               line1: '${config.codeLength} ${AppText.digits}'.toUpperCase(),
-              line2: '${config.maxAttempts} ${AppText.tries}'.toUpperCase(),
+              line2: attemptsText,
             ),
           ),
           const _ThinDivider(),
@@ -443,7 +468,9 @@ class _LimitModePanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final attemptIndex = _indexForValue(_attemptValues, attempts);
     final timeIndex = this.timeIndex.clamp(0, _timeValues.length - 1).toInt();
-    final attemptTicks = [for (final value in _attemptValues) value.toString()];
+    final attemptTicks = [
+      for (final value in _attemptValues) _formatAttemptsLimit(value),
+    ];
     final timeTicks = [
       for (final value in _timeValues) _formatTimeLimit(value),
     ];
@@ -462,9 +489,9 @@ class _LimitModePanel extends StatelessWidget {
                   child: _CompactSliderRow(
                     fallbackIcon: Icons.shield_outlined,
                     title: AppText.attemptsLimit,
-                    valueText:
-                        '${_attemptValues[attemptIndex]} ${AppText.tries}'
-                            .toUpperCase(),
+                    valueText: _formatAttemptsValue(
+                      _attemptValues[attemptIndex],
+                    ),
                     selectedIndex: attemptIndex,
                     ticks: attemptTicks,
                     onMinus: () => onAttemptsChanged(
@@ -973,6 +1000,20 @@ String _formatTimeLimit(int minutes) {
     return AppText.off.toUpperCase();
   }
   return '${minutes.toString().padLeft(2, '0')}:00';
+}
+
+String _formatAttemptsLimit(int attempts) {
+  if (attempts == 0) {
+    return AppText.off.toUpperCase();
+  }
+  return attempts.toString();
+}
+
+String _formatAttemptsValue(int attempts) {
+  if (attempts == 0) {
+    return AppText.off.toUpperCase();
+  }
+  return '$attempts ${AppText.tries}'.toUpperCase();
 }
 
 class _FramePainter extends CustomPainter {

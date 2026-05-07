@@ -40,6 +40,13 @@
 - Game Screen asset-backed UI 1st pass: header/status, code slots, keypad, latest Access/Trace, recent history, check table, pause/result modal
 - Game Screen bomb-centric simplified layout: top status/READY/pause/main Check Table bar removed, bomb hero overlay and compact history/keypad applied
 - Game Screen final polish in progress: `Bomb HUD -> Current Code -> Keypad -> History`, compact keypad, tactical history table, History-integrated Check Table button
+- Game Screen success/failure result overlay polish: generated result ambience overlays and displays result presentation over the existing gameplay screen.
+- Game Screen bomb stage animation: fixed hero image with stage-specific looping light/glow overlays, crossfaded state image changes, and no shake/scale movement.
+- Game Screen keypad press feedback: number/delete buttons have subtle scale press feedback; submit has a stronger press response while disabled buttons remain static.
+- Game sound effect foundation: settings-aware `SystemSound` call points for keypad/delete/submit/success/failure.
+- Game haptic feedback foundation: settings-aware `HapticFeedback` call points for keypad/delete/submit/success/failure/critical.
+- Mission Setup Attempts Limit supports OFF, and the last selected `GameConfig` is saved with `shared_preferences`.
+- Home Start Game launches directly with the last saved `GameConfig`; first-run fallback is Normal + Attempts OFF + Time OFF.
 - Game Screen bomb-centric redesign plan and Task 3.2-E required assets
 - Bomb hero/device visual rework for `bomb_device_frame.png` and `bomb_hero_*`
 - Check Table: auto display and manual digit mark cycling
@@ -52,8 +59,8 @@
 - Final Game Screen live responsive QA after latest polish
 - Main Menu final visual QA across devices
 - Currency amount text and plus-button behavior
-- Settings persistence for sound/music/vibration/check table/language override
-- Actual audio/haptics behavior
+- Settings persistence still needed for music/check table/language override; sound volume and vibration enabled are now persisted.
+- Custom audio asset playback / audio package integration
 - Shop / Remove Ads / Ads / Payment
 - Formal Flutter localization system
 - Android release icon, launch assets, metadata, release config
@@ -233,6 +240,7 @@ lib/domain/models/game_config.dart
   - recent history: `history_panel.png`, `history_row_panel.png`
   - Check Table: main screen uses a top-right icon button; bottom sheet reuses `check_table_panel.png`, `digit_marker_*`
   - result modal: `result_modal_success.png`, `result_modal_failure.png`, `modal_primary_button.png`, `modal_secondary_button.png`
+  - result overlay ambience: `bomb_defused_overlay.png`, `bomb_exploded_overlay.png`
 - Removed from active main gameplay layout:
   - `LimitStatusBar` top header/status panels
   - `bomb_device_frame.png`
@@ -244,8 +252,10 @@ lib/domain/models/game_config.dart
 - Latest Game Screen visual flow is `Bomb HUD -> Current Code -> Keypad -> History`.
 - Bomb HUD no longer shows difficulty text. It shows `LEFT / TIME` labels and large LED-style remaining attempts/time.
 - Bomb HUD label/number color is synchronized with bomb stage color. The central divider was removed.
+- Bomb HUD shows `OFF` for unlimited attempts. Attempts OFF is represented by `GameConfig.maxAttempts == null`.
+- Bomb hero stage animation uses fixed-position hero images with looping light/glow overlays only. Stage image changes are crossfaded; shake, jitter, and scale movement are avoided.
 - Current Code uses a light Flutter frame and visible slot assets instead of a heavy background panel.
-- Keypad is compact, centered on the Current Code axis, and keeps 48dp touch target height.
+- Keypad is compact, centered on the Current Code axis, keeps 48dp touch target height, and uses subtle scale press feedback.
 - History is a compact tactical deduction table with shared header/row columns, latest row first, `A` green and `T` blue.
 - History panel polish now covers the baked-in inner frame with a single flat tactical surface, adds very subtle CustomPainter grain/brushed texture, and aligns `# / CODE / RESULT` header columns with row content.
 - Empty History uses compact `STANDBY` instead of a large `No attempts yet.` panel.
@@ -253,7 +263,7 @@ lib/domain/models/game_config.dart
 - Check Table entry uses `assets/game/check_table_bulb_icon.png` inside an icon-only circular frame aligned near the History header; a Flutter `CustomPainter` bulb remains as an asset-load fallback.
 - Bomb hero 4 states had near-white matte pixels darkened; `.bak_matte` backups may exist beside the PNGs.
 - `bomb_hero_critical.png` canvas remains `720x405`, but its internal content was slightly reduced to better match the optical size of stable/caution/danger.
-- `game_controller.dart`, `judge_code.dart`, and `game_config.dart` remain unchanged.
+- Access/Trace judging remains unchanged. `game_controller.dart` and `game_config.dart` were later updated only to support Attempts OFF / no-limit config rules.
 - `dart format` should not be run on `pubspec.yaml`; use `flutter pub get` after YAML changes.
 - `docs/GAME_SCREEN_REDESIGN_PLAN.md` defines the next bomb-centric main play layout.
 - Task 3.2-E generated required bomb-centric assets: `bomb_hero_stable.png`, `bomb_hero_caution.png`, `bomb_hero_danger.png`, `bomb_hero_critical.png`, `current_code_panel.png`, `check_table_open_button.png`, `keypad_delete_button.png`, `keypad_submit_button.png`, `keypad_submit_disabled.png`, `check_table_modal_panel.png`, `modal_close_button.png`, and `main_play_required_assets_preview.png`.
@@ -273,6 +283,18 @@ lib/domain/models/game_config.dart
 | Normal | 3 | 12 |
 | Expert | 4 | 7 |
 
+### First-Run / Saved Config
+
+- Home Start Game loads the last saved `GameConfig`.
+- If no saved config exists, first-run default is Normal + Attempts OFF + Time OFF.
+- Mission Setup saves the selected config when Start Mission is pressed.
+
+### Attempts Options
+
+```text
+OFF / 7 / 10 / 13 / 15 / 20
+```
+
 ### Timer Options
 
 ```text
@@ -282,16 +304,18 @@ OFF / 5 min / 10 min / 20 min
 ### LimitMode
 
 ```text
-If time is OFF:
+If attempts is OFF and time is OFF:
+  LimitMode.none
+
+If attempts is ON and time is OFF:
   LimitMode.attemptsOnly
 
-If time is enabled:
+If attempts is OFF and time is ON:
+  LimitMode.timeOnly
+
+If attempts is ON and time is ON:
   LimitMode.attemptsAndTime
 ```
-
-### Confirmation Needed
-
-- Check whether `GameConfig.defaults()` and Mission Setup timer selector defaults fully match the intended document rules.
 
 ---
 
@@ -346,6 +370,10 @@ If time is enabled:
 - Task 3.3-C update: simplified bomb-centric Game Screen applied. Top status panels, READY panel, pause button, main Check Table bar, and utility count bar were removed. Bomb hero overlay, current code panel, compact scrollable history, top-right Check Table icon, and dedicated delete/submit keypad assets were connected.
 - Task 3.3-E update: Game Screen final polish is in progress. The active flow is now `Bomb HUD -> Current Code -> Keypad -> History`. Difficulty text was removed from Bomb HUD, `LEFT/TIME` LED HUD uses stage color sync, Current Code uses a light frame, keypad is compact and centered, History is a tactical table, and Check Table entry is integrated into the History panel.
 - Task 3.3-E latest note: 360x800 overflow was reported and addressed by reducing bomb hero, code, keypad, and history spacing. Later polish cleaned up the History inner frame by overlaying a single dark tactical surface, added subtle surface texture, aligned History header/body columns, replaced the Check Table entry with a bulb PNG in a circular icon frame, and slightly reduced the critical bomb hero optical size. Latest format/analyze/live QA is still needed.
+- Task 3.3-E animation/feedback update: Bomb hero state animation now loops with fixed-position light/glow overlays only, state image changes crossfade naturally, and keypad/delete/submit buttons have scale press feedback without changing layout or touch target size.
+- Task 3.3-E result presentation update: generated `bomb_defused_overlay.png` and `bomb_exploded_overlay.png`, then changed success/failure presentation to layer a dark translucent overlay, result ambience image, and existing result modal over the current gameplay screen with fade/scale motion. Live brightness/readability/overflow QA is still needed.
+- Game feedback foundation update: Added `lib/core/utils/game_sound_effects.dart` and `lib/core/feedback/game_haptics.dart`. Sound uses settings-aware `SystemSound`; haptics use settings-aware `HapticFeedback`. No audio/haptic package dependencies were added.
+- Mission Setup / Home config update: Attempts OFF is available, no-limit mode is represented by `LimitMode.none`, last `GameConfig` is persisted via `LocalGameConfigRepository`, and Home Start Game launches directly with the last saved config or Normal + Attempts OFF + Time OFF on first run.
 - Orientation update: MVP now locks the whole app to portrait via Flutter `SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp])` and Android `android:screenOrientation="portrait"` to avoid unsupported landscape overflow.
 - Current runtime note: Dart Dev Service connection failure and Gradle Kotlin incremental storage errors are blocking live QA. Try `flutter run --disable-dds --enable-software-rendering`, cache cleanup, and `kotlin.incremental=false` if the Kotlin storage stack recurs.
 
@@ -459,16 +487,16 @@ Additional manual steps:
 
 ### Current Active Task
 
-- Task ID: Task 3.3-E / Docs Update
-- Task Name: Game Screen Final UI Polish Documentation
-- Status: IN PROGRESS / VERIFY NEEDED
-- Target Files: `lib/features/game/game_screen.dart`, `lib/features/game/widgets/*`, `assets/game/bomb_hero_*`, `docs/*`
+- Task ID: Session Roll-up / Docs Update
+- Task Name: Gameplay Feedback, Config, and Result Overlay Summary
+- Status: UPDATED / VERIFY NEEDED
+- Target Files: `docs/MASTER_CONTEXT.md`, `docs/NEXT_TASKS.md`
 
 ### Latest Result
 
-- Changed Files: `lib/main.dart`, `android/app/src/main/AndroidManifest.xml`, `lib/features/game/game_screen.dart`, `lib/features/game/widgets/asset_frame.dart`, `lib/features/game/widgets/code_slots.dart`, `lib/features/game/widgets/number_keypad.dart`, `lib/features/game/widgets/guess_history_list.dart`, `lib/features/game/widgets/game_asset_paths.dart`, `assets/game/bomb_hero_*`, `assets/game/check_table_bulb_icon.png`, and docs update targets.
-- Summary: Applied multiple Game Screen final polish passes and locked the app to portrait for MVP. The active play flow is `Bomb HUD -> Current Code -> Keypad -> History`. History now reads as a single tactical panel with aligned `# / CODE / RESULT` header/body columns, subtle dark surface texture, faint separators, and no visible inner table frame. Check Table opens from a History-integrated circular bulb icon. `bomb_hero_critical.png` was optically reduced to match the other hero states more closely. Game logic, judge logic, config, domain/data, menu assets, and mission setup assets were not modified.
-- Remaining Issues: Latest History surface, Check Table icon placement, critical bomb optical size, portrait lock behavior, 360x800 overflow, touch targets, and font-scale behavior need live visual QA. Latest `dart format`, `flutter analyze`, `flutter test`, and run verification are still needed. DDS/Gradle Kotlin incremental issues may still affect live run.
+- Changed Files: `lib/features/game/game_screen.dart`, `lib/features/game/widgets/game_asset_paths.dart`, `lib/features/game/widgets/number_keypad.dart`, `lib/core/utils/game_sound_effects.dart`, `lib/core/feedback/game_haptics.dart`, `lib/features/settings/settings_screen.dart`, `lib/domain/enums/limit_mode.dart`, `lib/domain/models/game_config.dart`, `lib/data/local_game_config_repository.dart`, `lib/features/home/home_screen.dart`, `lib/features/mode_select/mode_select_screen.dart`, `lib/features/game/game_controller.dart`, `test/game_controller_test.dart`, `test/local_game_config_repository_test.dart`, `assets/game/bomb_defused_overlay.png`, `assets/game/bomb_exploded_overlay.png`, `docs/MASTER_CONTEXT.md`, and `docs/NEXT_TASKS.md`.
+- Summary: Rolled up the latest work: fixed-position bomb stage light/glow animation with crossfaded hero state images, keypad/delete/submit press feedback, sound effect foundation, haptic feedback foundation, Attempts OFF/no-limit config support, last-config persistence and Home direct Start Game, plus success/failure result ambience overlays over the existing Game Screen. Access/Trace judging, assets outside `assets/game/`, Android, and dependencies were not changed.
+- Remaining Issues: Latest `dart format .`, `flutter analyze`, `flutter test`, and live run verification are still needed. QA should cover no-limit gameplay, saved config reload, sound/haptic setting behavior, result overlay brightness/readability, small-screen fit, and emulator DDS/Gradle stability.
 - User Commands To Run: `dart format .`, `flutter analyze`, `flutter test`, `flutter run --disable-dds --enable-software-rendering`; if Kotlin incremental storage recurs, clean Gradle caches and set `kotlin.incremental=false`.
 
 ---

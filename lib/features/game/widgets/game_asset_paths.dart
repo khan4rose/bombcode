@@ -32,6 +32,8 @@ class GameAssetPaths {
   static const pauseModalPanel = 'assets/game/pause_modal_panel.png';
   static const resultModalSuccess = 'assets/game/result_modal_success.png';
   static const resultModalFailure = 'assets/game/result_modal_failure.png';
+  static const bombDefusedOverlay = 'assets/game/bomb_defused_overlay.png';
+  static const bombExplodedOverlay = 'assets/game/bomb_exploded_overlay.png';
   static const modalPrimaryButton = 'assets/game/modal_primary_button.png';
   static const modalSecondaryButton = 'assets/game/modal_secondary_button.png';
 }

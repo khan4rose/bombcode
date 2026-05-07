@@ -11,10 +11,15 @@ void main() {
     return GameConfig(
       difficulty: Difficulty.beginner,
       codeLength: 4,
-      maxAttempts: mode == LimitMode.timeOnly ? null : 1,
-      timeLimit: mode == LimitMode.attemptsOnly
-          ? null
-          : const Duration(seconds: 1),
+      maxAttempts: switch (mode) {
+        LimitMode.none || LimitMode.timeOnly => null,
+        LimitMode.attemptsOnly || LimitMode.attemptsAndTime => 1,
+      },
+      timeLimit: switch (mode) {
+        LimitMode.none || LimitMode.attemptsOnly => null,
+        LimitMode.timeOnly ||
+        LimitMode.attemptsAndTime => const Duration(seconds: 1),
+      },
       limitMode: mode,
       autoCheckTable: true,
     );
@@ -48,6 +53,25 @@ void main() {
     expect(controller.status, GameStatus.failed);
     expect(controller.gameOverReason, GameOverReason.timeExpired);
     controller.dispose();
+  });
+
+  test('no limit mode does not fail from attempts or timer', () {
+    final controller = GameController()..start(config(LimitMode.none));
+    controller.answer = [1, 2, 3, 4];
+
+    for (var round = 0; round < 3; round++) {
+      for (final digit in [5, 6, 7, 8]) {
+        controller.inputDigit(digit);
+      }
+      controller.submitGuess();
+    }
+
+    controller.tickOneSecond();
+    expect(controller.status, GameStatus.playing);
+    expect(controller.remainingAttempts, isNull);
+    expect(controller.remainingSeconds, isNull);
+    expect(controller.gameOverReason, isNull);
+    expect(controller.history.length, 3);
   });
 
   test('pause stops manual ticking', () {

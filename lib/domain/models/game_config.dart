@@ -47,15 +47,61 @@ class GameConfig {
     };
   }
 
-  GameConfig copyWith({LimitMode? limitMode, bool? autoCheckTable}) {
-    final mode = limitMode ?? this.limitMode;
+  factory GameConfig.initialDefault() {
+    return const GameConfig(
+      difficulty: Difficulty.normal,
+      codeLength: 3,
+      maxAttempts: null,
+      timeLimit: null,
+      limitMode: LimitMode.none,
+      autoCheckTable: true,
+    );
+  }
+
+  factory GameConfig.fromLimits({
+    required Difficulty difficulty,
+    required int codeLength,
+    required int? maxAttempts,
+    required Duration? timeLimit,
+    required bool autoCheckTable,
+  }) {
+    final usesAttempts = maxAttempts != null && maxAttempts > 0;
+    final usesTime = timeLimit != null && timeLimit.inSeconds > 0;
+    final mode = switch ((usesAttempts, usesTime)) {
+      (false, false) => LimitMode.none,
+      (true, false) => LimitMode.attemptsOnly,
+      (false, true) => LimitMode.timeOnly,
+      (true, true) => LimitMode.attemptsAndTime,
+    };
+
     return GameConfig(
       difficulty: difficulty,
       codeLength: codeLength,
-      maxAttempts: mode == LimitMode.timeOnly ? null : maxAttempts,
-      timeLimit: mode == LimitMode.attemptsOnly ? null : timeLimit,
+      maxAttempts: usesAttempts ? maxAttempts : null,
+      timeLimit: usesTime ? timeLimit : null,
       limitMode: mode,
+      autoCheckTable: autoCheckTable,
+    );
+  }
+
+  GameConfig copyWith({
+    int? codeLength,
+    Object? maxAttempts = _sentinel,
+    Object? timeLimit = _sentinel,
+    bool? autoCheckTable,
+  }) {
+    return GameConfig.fromLimits(
+      difficulty: difficulty,
+      codeLength: codeLength ?? this.codeLength,
+      maxAttempts: identical(maxAttempts, _sentinel)
+          ? this.maxAttempts
+          : maxAttempts as int?,
+      timeLimit: identical(timeLimit, _sentinel)
+          ? this.timeLimit
+          : timeLimit as Duration?,
       autoCheckTable: autoCheckTable ?? this.autoCheckTable,
     );
   }
 }
+
+const _sentinel = Object();

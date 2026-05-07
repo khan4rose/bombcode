@@ -601,6 +601,13 @@ pubspec.yaml  # 신규 asset 등록이 필요한 경우만
 - [ ] History fixed height 복귀 후 empty/1-row/many-row 상태 확인
 - [ ] Bomb hero critical 축소 후 HUD 숫자 가독성 및 stage 전환 흔들림 확인
 - [ ] latest polish 후 `dart format`, `flutter analyze`, `flutter test` 확인
+- [x] Bomb hero stage animation loop 추가: image shake/scale 없이 light/glow overlay만 반복
+- [x] Bomb hero stage image 전환을 crossfade로 자연스럽게 처리
+- [x] Number/Delete/Submit keypad press scale feedback 추가
+- [x] Success/Failure result ambience overlay asset 생성
+- [x] 결과 표시를 새 전체 화면 대신 기존 Game Screen 위 dark overlay + ambience image + result modal로 변경
+- [x] result modal fade + subtle scale transition 적용
+- [ ] success/failure overlay brightness, modal readability, and small-screen overflow live QA
 
 최근 적용 메모:
 
@@ -618,6 +625,9 @@ pubspec.yaml  # 신규 asset 등록이 필요한 경우만
 - Check Table button icon은 사용자 교체 이미지에서 panel/background를 제거한 `check_table_bulb_icon.png`를 사용하며, circular frame 안에 표시.
 - `bomb_hero_critical.png`는 canvas size를 유지한 채 internal content만 소폭 줄여 optical size를 맞춤.
 - `assets/game/bomb_hero_*` near-white matte를 dark matte로 보정했고 `.bak_matte` backup이 생성됨.
+- Bomb stage animation polish: hero images stay fixed; only glow/light overlays animate in a loop, stage image swaps crossfade, and Critical avoids shake/jitter.
+- Keypad feedback polish: number/delete buttons use subtle 100ms scale feedback, submit uses a stronger press scale, and disabled buttons remain static.
+- Result overlay polish: `assets/game/bomb_defused_overlay.png` and `assets/game/bomb_exploded_overlay.png` were generated. Game results now overlay the current gameplay screen with a dark translucent barrier, result ambience image, subtle green/cyan or red flash, and existing result modal content. Text/buttons remain Flutter-rendered; no new dependencies were added.
 
 ### Task 3.3 Game Screen Design 적용
 
@@ -682,7 +692,7 @@ lib/core/widgets/app_background.dart  # 필요한 경우만
 
 ### Task 5.1 설정값 저장
 
-상태: TODO
+상태: PARTIAL
 
 목표:
 
@@ -690,11 +700,24 @@ lib/core/widgets/app_background.dart  # 필요한 경우만
 
 작업 체크리스트:
 
-- [ ] settings repository 설계
-- [ ] `shared_preferences` 사용
-- [ ] sound/music/vibration/auto check table 기본값 저장
-- [ ] Mission Setup에서 설정값 load
+- [x] sound volume 저장/로드 foundation 추가 (`GameSoundEffects`)
+- [x] vibration enabled 저장/로드 foundation 추가 (`GameHaptics`)
+- [x] `shared_preferences` 사용
+- [x] Mission Setup 마지막 `GameConfig` 저장/로드 (`LocalGameConfigRepository`)
+- [x] Home Start Game이 마지막 저장 config로 바로 시작
+- [x] 저장 config가 없으면 Normal + Attempts OFF + Time OFF 기본값 사용
+- [ ] music 설정 저장/로드
+- [ ] auto check table 설정을 Settings와 Mission Setup 사이에 일관되게 연결
+- [ ] language override 저장/로드
 - [ ] records storage schema는 반드시 필요한 경우에만 변경
+
+최근 적용 메모:
+
+- `lib/core/utils/game_sound_effects.dart`: sound slider 값이 0이면 효과음 skip, 0보다 크면 Flutter `SystemSound` 호출.
+- `lib/core/feedback/game_haptics.dart`: vibration setting이 꺼져 있으면 `HapticFeedback` skip.
+- `lib/data/local_game_config_repository.dart`: 마지막 GameConfig를 JSON string으로 저장.
+- Attempts OFF is represented by `GameConfig.maxAttempts == null`; Time OFF remains `timeLimit == null`.
+- `LimitMode.none` added for Attempts OFF + Time OFF.
 
 수정 금지:
 

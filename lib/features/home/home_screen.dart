@@ -3,7 +3,9 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../data/local_game_config_repository.dart';
 import '../../core/widgets/app_background.dart';
+import '../game/game_screen.dart';
 import '../mode_select/mode_select_screen.dart';
 import '../records/records_screen.dart';
 import '../settings/settings_screen.dart';
@@ -95,7 +97,7 @@ class HomeScreen extends StatelessWidget {
                           text: strings.startGame,
                           scale: s,
                           height: primaryButtonHeight,
-                          onPressed: () => _openModeSelect(context),
+                          onPressed: () => _startGame(context),
                         ),
                         const SizedBox.shrink(),
                         SecondaryMenuButton(
@@ -182,6 +184,16 @@ class HomeScreen extends StatelessWidget {
     Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const ModeSelectScreen()));
+  }
+
+  Future<void> _startGame(BuildContext context) async {
+    final config = await LocalGameConfigRepository().loadLastConfig();
+    if (!context.mounted) {
+      return;
+    }
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => GameScreen(config: config)));
   }
 
   void _showComingSoon(BuildContext context) {

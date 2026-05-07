@@ -102,6 +102,7 @@ class NumberKeypad extends StatelessWidget {
                               : GameAssetPaths.keypadSubmitButton,
                           onTap: onSubmit,
                           label: AppText.submit,
+                          pressedScale: 0.91,
                         ),
                       ),
                     ),
@@ -151,11 +152,13 @@ class _ActionButton extends StatelessWidget {
   final String assetPath;
   final VoidCallback? onTap;
   final String label;
+  final double pressedScale;
 
   const _ActionButton({
     required this.assetPath,
     required this.onTap,
     required this.label,
+    this.pressedScale = 0.96,
   });
 
   @override
@@ -164,6 +167,7 @@ class _ActionButton extends StatelessWidget {
       idleAsset: assetPath,
       pressedAsset: assetPath,
       onTap: onTap,
+      pressedScale: pressedScale,
       child: FittedBox(
         fit: BoxFit.scaleDown,
         child: Text(
@@ -188,12 +192,14 @@ class _PressableAssetButton extends StatefulWidget {
   final String pressedAsset;
   final VoidCallback? onTap;
   final Widget child;
+  final double pressedScale;
 
   const _PressableAssetButton({
     required this.idleAsset,
     required this.pressedAsset,
     required this.onTap,
     required this.child,
+    this.pressedScale = 0.96,
   });
 
   @override
@@ -202,6 +208,7 @@ class _PressableAssetButton extends StatefulWidget {
 
 class _PressableAssetButtonState extends State<_PressableAssetButton> {
   bool _pressed = false;
+  int _pressSerial = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -211,20 +218,39 @@ class _PressableAssetButtonState extends State<_PressableAssetButton> {
       enabled: enabled,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTapDown: enabled ? (_) => setState(() => _pressed = true) : null,
-        onTapCancel: enabled ? () => setState(() => _pressed = false) : null,
+        onTapDown: enabled ? (_) => _setPressed(true) : null,
+        onTapCancel: enabled ? () => _setPressed(false) : null,
         onTapUp: enabled
             ? (_) {
-                setState(() => _pressed = false);
                 widget.onTap?.call();
+                _releasePressed();
               }
             : null,
-        child: AssetFrame(
-          assetPath: _pressed ? widget.pressedAsset : widget.idleAsset,
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          child: Center(child: widget.child),
+        child: AnimatedScale(
+          scale: _pressed ? widget.pressedScale : 1.0,
+          duration: const Duration(milliseconds: 100),
+          curve: Curves.easeOutCubic,
+          child: AssetFrame(
+            assetPath: _pressed ? widget.pressedAsset : widget.idleAsset,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Center(child: widget.child),
+          ),
         ),
       ),
     );
+  }
+
+  void _setPressed(bool pressed) {
+    _pressSerial += 1;
+    setState(() => _pressed = pressed);
+  }
+
+  Future<void> _releasePressed() async {
+    final serial = _pressSerial;
+    await Future<void>.delayed(const Duration(milliseconds: 90));
+    if (!mounted || serial != _pressSerial) {
+      return;
+    }
+    setState(() => _pressed = false);
   }
 }
