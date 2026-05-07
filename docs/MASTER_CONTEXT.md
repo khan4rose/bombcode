@@ -37,6 +37,11 @@
 - Common background wrapper: `lib/core/widgets/app_background.dart`
 - Mission Setup screen: difficulty, digit count, attempts, timer
 - Game logic: answer generation, input, judging, timer, success/failure
+- Game Screen asset-backed UI 1st pass: header/status, code slots, keypad, latest Access/Trace, recent history, check table, pause/result modal
+- Game Screen bomb-centric simplified layout: top status/READY/pause/main Check Table bar removed, bomb hero overlay and compact history/keypad applied
+- Game Screen final polish in progress: `Bomb HUD -> Current Code -> Keypad -> History`, compact keypad, tactical history table, History-integrated Check Table button
+- Game Screen bomb-centric redesign plan and Task 3.2-E required assets
+- Bomb hero/device visual rework for `bomb_device_frame.png` and `bomb_hero_*`
 - Check Table: auto display and manual digit mark cycling
 - Records: `shared_preferences` local records/statistics
 - Tutorial placeholder and Settings screen with UI-only option controls
@@ -44,7 +49,7 @@
 
 ### Not Implemented / Needs Work
 
-- Final Game Screen bomb-defusal visual UI and related assets
+- Final Game Screen live responsive QA after latest polish
 - Main Menu final visual QA across devices
 - Currency amount text and plus-button behavior
 - Settings persistence for sound/music/vibration/check table/language override
@@ -64,12 +69,15 @@
 - Previous trial with `SafeArea(bottom:false)` and `MediaQuery.removePadding` did not solve it and was rolled back.
 - 2026-05-05: `android:windowSoftInputMode` was changed from `adjustResize` to `adjustNothing`; user later reported the app is currently running normally.
 - 2026-05-06: emulator showed `vendor.mesa.virtgpu.kumquat` and `Lost connection to device`; user confirmed `flutter run --enable-software-rendering` runs normally, so emulator GPU/virtgpu instability is likely.
+- 2026-05-07: DDS WebSocket startup failed repeatedly with `Connection closed before full header was received`; try `flutter run --disable-dds --enable-software-rendering`.
+- 2026-05-07: Gradle Kotlin incremental storage close stack appeared during `assembleDebug`/`assembleRelease`; cache cleanup and disabling Kotlin incremental build may be needed.
 - Do not assume this is only a Flutter layout issue. Check Android window/insets logs if it recurs.
 
 ### UI Risks
 
 - Main Menu needs final visual QA: button spacing, touch target, green edge/chroma artifact.
 - Mission Setup asset quality needs QA.
+- Game Screen latest polish needs `dart format`, `flutter analyze`, `flutter test`, and live 360x800-style overflow/touch-target/icon affordance QA.
 - `mode_select_screen.dart` is large and should later be split without behavior change.
 - Home menu old/generated assets may remain. Do not delete assets before checking code references.
 
@@ -167,6 +175,7 @@ lib/domain/models/game_config.dart
 - Android phone portrait first
 - Use `SafeArea`
 - Use `LayoutBuilder` or `MediaQuery`
+- MVP is portrait-only. `lib/main.dart` locks Flutter orientation to `DeviceOrientation.portraitUp`, and Android `MainActivity` declares `android:screenOrientation="portrait"`.
 - Main/Menu/Setup/Game screens should remain non-scroll unless user explicitly requests otherwise
 - Avoid fixed pixel layout
 - Prevent vertical overflow by scaling spacing, logo, font, button, icon
@@ -208,6 +217,49 @@ lib/domain/models/game_config.dart
 - Attempts/Time slider badge, ticks, and thumb position should stay synchronized from one source list.
 - Start Mission button has no key icon; text is centered.
 - Digits / Timer / Reward summary card has enlarged icons, text, padding, and height.
+
+### Game Screen
+
+- Use common background through `AppBackground`.
+- Asset-backed UI 1st pass is applied in `lib/features/game/game_screen.dart` and `lib/features/game/widgets/*`.
+- `pubspec.yaml` includes `assets/game/`.
+- New helper widgets:
+  - `lib/features/game/widgets/game_asset_paths.dart`
+  - `lib/features/game/widgets/asset_frame.dart`
+- Current applied asset areas:
+  - bomb hero: `bomb_hero_stable.png`, `bomb_hero_caution.png`, `bomb_hero_danger.png`, `bomb_hero_critical.png`
+  - current code: `current_code_panel.png`, `code_slot_empty.png`, `code_slot_filled.png`, `code_slot_selected.png`
+  - `NumberKeypad`: `keypad_button_idle.png`, `keypad_button_pressed.png`, `keypad_button_disabled.png`, `keypad_delete_button.png`, `keypad_submit_button.png`, `keypad_submit_disabled.png`
+  - recent history: `history_panel.png`, `history_row_panel.png`
+  - Check Table: main screen uses a top-right icon button; bottom sheet reuses `check_table_panel.png`, `digit_marker_*`
+  - result modal: `result_modal_success.png`, `result_modal_failure.png`, `modal_primary_button.png`, `modal_secondary_button.png`
+- Removed from active main gameplay layout:
+  - `LimitStatusBar` top header/status panels
+  - `bomb_device_frame.png`
+  - READY panel / `access_trace_panel.png`
+  - pause button / pause overlay
+  - main inline Check Table bar and tried/current count utility bar
+- Text and digits remain Flutter-rendered.
+- Access / Trace terms are preserved.
+- Latest Game Screen visual flow is `Bomb HUD -> Current Code -> Keypad -> History`.
+- Bomb HUD no longer shows difficulty text. It shows `LEFT / TIME` labels and large LED-style remaining attempts/time.
+- Bomb HUD label/number color is synchronized with bomb stage color. The central divider was removed.
+- Current Code uses a light Flutter frame and visible slot assets instead of a heavy background panel.
+- Keypad is compact, centered on the Current Code axis, and keeps 48dp touch target height.
+- History is a compact tactical deduction table with shared header/row columns, latest row first, `A` green and `T` blue.
+- History panel polish now covers the baked-in inner frame with a single flat tactical surface, adds very subtle CustomPainter grain/brushed texture, and aligns `# / CODE / RESULT` header columns with row content.
+- Empty History uses compact `STANDBY` instead of a large `No attempts yet.` panel.
+- Check Table entry moved into the History panel top-right area and opens the existing bottom sheet.
+- Check Table entry uses `assets/game/check_table_bulb_icon.png` inside an icon-only circular frame aligned near the History header; a Flutter `CustomPainter` bulb remains as an asset-load fallback.
+- Bomb hero 4 states had near-white matte pixels darkened; `.bak_matte` backups may exist beside the PNGs.
+- `bomb_hero_critical.png` canvas remains `720x405`, but its internal content was slightly reduced to better match the optical size of stable/caution/danger.
+- `game_controller.dart`, `judge_code.dart`, and `game_config.dart` remain unchanged.
+- `dart format` should not be run on `pubspec.yaml`; use `flutter pub get` after YAML changes.
+- `docs/GAME_SCREEN_REDESIGN_PLAN.md` defines the next bomb-centric main play layout.
+- Task 3.2-E generated required bomb-centric assets: `bomb_hero_stable.png`, `bomb_hero_caution.png`, `bomb_hero_danger.png`, `bomb_hero_critical.png`, `current_code_panel.png`, `check_table_open_button.png`, `keypad_delete_button.png`, `keypad_submit_button.png`, `keypad_submit_disabled.png`, `check_table_modal_panel.png`, `modal_close_button.png`, and `main_play_required_assets_preview.png`.
+- Latest visual rework updated only `bomb_device_frame.png`, `bomb_hero_stable.png`, `bomb_hero_caution.png`, `bomb_hero_danger.png`, `bomb_hero_critical.png`, and `main_play_required_assets_preview.png`.
+- Bomb hero 4 states are `720x405 RGBA` with the same canvas, alignment, body silhouette, and display-safe areas after user-image transparency and size normalization.
+- `bomb_device_frame.png` is `720x260 RGBA` and now reads more like a small bomb input module.
 
 ---
 
@@ -259,9 +311,17 @@ If time is enabled:
 
 ### Priority 3
 
-- `Task 3.1` Game Screen Asset List 정의 — TODO
-- `Task 3.2` Game Screen Assets 생성 — TODO
-- `Task 3.3` Game Screen Design 적용 — TODO
+- `Task 3.1` Game Screen Asset List 정의 — DONE
+- `Task 3.2-A` Core Input Assets — DONE
+- `Task 3.2-B` Status / History Panel Assets — DONE
+- `Task 3.2-C` Check Table / Memo Assets — DONE
+- `Task 3.2-D` Modal / Result Assets — DONE
+- `Task 3.2-E` Main Play Redesign Required Assets — DONE
+- `Task 3.2-E Visual Rework` Bomb Hero / Device Assets — DONE
+- `Task 3.3-A` Game Screen Asset-backed Layout Implementation — DONE / SUPERSEDED
+- `Task 3.3-C` Main Play Screen Bomb-Centric Layout Implementation — DONE / VERIFY BLOCKED BY BUILD
+- `Task 3.3-D` Check Table Modal / Bottom Sheet Implementation — PARTIAL
+- `Task 3.3-E` Game Screen Responsive QA and Visual Polish — IN PROGRESS / LATEST POLISH VERIFY NEEDED
 
 ### Later
 
@@ -276,6 +336,18 @@ If time is enabled:
 - Task 1.0 update: if emulator GPU/virtgpu logs recur, try `flutter run --enable-software-rendering`; this was confirmed normal on 2026-05-06.
 - Task 2.1 Mission Setup Asset Visual QA: DONE / WATCH after slider track padding fix and difficulty on/off asset rebuild.
 - Task 2.2 Mission Setup Layout Fine Tuning: DONE after spacing, slider sync, summary time display, summary card enlargement, and Start Mission text alignment updates.
+- Task 3.1 Game Screen Asset List: DONE after creating `docs/GAME_SCREEN_ASSET_LIST.md`.
+- Task 3.1 update: `docs/GAME_SCREEN_ASSET_LIST.md` now includes asset size rule, Required/Optional priority, visual style detail, layout priority, check table display rule, and phased Task 3.2 generation order.
+- Task 3.2-A/B/C/D Game Screen asset generation: DONE. Generated and polished core input, status/history, check table/memo, and modal/result assets under `assets/game/`.
+- Task 3.2-E Game Screen bomb-centric redesign planning/assets: DONE. Created `docs/GAME_SCREEN_REDESIGN_PLAN.md`, generated required new assets, and created `assets/game/main_play_required_assets_preview.png`.
+- Task 3.2-E visual rework: DONE. Reworked `bomb_device_frame.png` and `bomb_hero_stable/caution/danger/critical.png` to look more like stylized but believable bomb-defusal devices with side housings, cables, connectors, bolts, warning lights, and recessed display-safe areas.
+- Task 3.2-E validation: bomb hero 4 states were generated as `720x400 RGBA`; later user-provided hero replacements were normalized to `720x405 RGBA`, transparent corners alpha 0.
+- Task 3.3-A update: Game Screen asset-backed layout 1st pass applied. Awaiting `flutter analyze`, `flutter test`, and live UI QA.
+- Task 3.3-C update: simplified bomb-centric Game Screen applied. Top status panels, READY panel, pause button, main Check Table bar, and utility count bar were removed. Bomb hero overlay, current code panel, compact scrollable history, top-right Check Table icon, and dedicated delete/submit keypad assets were connected.
+- Task 3.3-E update: Game Screen final polish is in progress. The active flow is now `Bomb HUD -> Current Code -> Keypad -> History`. Difficulty text was removed from Bomb HUD, `LEFT/TIME` LED HUD uses stage color sync, Current Code uses a light frame, keypad is compact and centered, History is a tactical table, and Check Table entry is integrated into the History panel.
+- Task 3.3-E latest note: 360x800 overflow was reported and addressed by reducing bomb hero, code, keypad, and history spacing. Later polish cleaned up the History inner frame by overlaying a single dark tactical surface, added subtle surface texture, aligned History header/body columns, replaced the Check Table entry with a bulb PNG in a circular icon frame, and slightly reduced the critical bomb hero optical size. Latest format/analyze/live QA is still needed.
+- Orientation update: MVP now locks the whole app to portrait via Flutter `SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp])` and Android `android:screenOrientation="portrait"` to avoid unsupported landscape overflow.
+- Current runtime note: Dart Dev Service connection failure and Gradle Kotlin incremental storage errors are blocking live QA. Try `flutter run --disable-dds --enable-software-rendering`, cache cleanup, and `kotlin.incremental=false` if the Kotlin storage stack recurs.
 
 ---
 
@@ -320,7 +392,7 @@ Task 2.2 Mission Setup Layout Fine Tuning
 Choose:
 
 ```text
-Task 3.1 Game Screen Asset List 정의
+Task 3.3-E Game Screen Responsive QA and Visual Polish
 ```
 
 ---
@@ -365,6 +437,7 @@ If emulator/debug connection is unstable:
 flutter clean
 flutter pub get
 flutter run
+flutter run --disable-dds --enable-software-rendering
 ```
 
 Additional manual steps:
@@ -381,21 +454,21 @@ Additional manual steps:
 
 ### Last Updated
 
-- Date: 2026-05-05
+- Date: 2026-05-07
 - Updated By: Codex
 
 ### Current Active Task
 
-- Task ID: Task 2.1 / 2.2 follow-up
-- Task Name: Mission Setup Asset + Layout Visual Tuning
-- Status: DONE
-- Target Files: `lib/features/mode_select/mode_select_screen.dart`, `assets/mission_setup/difficulty_*_on.png`, `assets/mission_setup/difficulty_*_off.png`, `assets/mission_setup/slider_track.png`, `android/app/src/main/AndroidManifest.xml`, `docs/NEXT_TASKS.md`, `docs/PROJECT_STATUS.md`, `docs/MASTER_CONTEXT.md`
+- Task ID: Task 3.3-E / Docs Update
+- Task Name: Game Screen Final UI Polish Documentation
+- Status: IN PROGRESS / VERIFY NEEDED
+- Target Files: `lib/features/game/game_screen.dart`, `lib/features/game/widgets/*`, `assets/game/bomb_hero_*`, `docs/*`
 
 ### Latest Result
 
-- Changed Files: `lib/features/mode_select/mode_select_screen.dart`, `assets/mission_setup/slider_track.png`, `assets/mission_setup/difficulty_beginner_on.png`, `assets/mission_setup/difficulty_normal_on.png`, `assets/mission_setup/difficulty_expert_on.png`, `assets/mission_setup/difficulty_beginner_off.png`, `assets/mission_setup/difficulty_normal_off.png`, `assets/mission_setup/difficulty_expert_off.png`, `android/app/src/main/AndroidManifest.xml`, `docs/NEXT_TASKS.md`, `docs/PROJECT_STATUS.md`, `docs/MASTER_CONTEXT.md`
-- Summary: Mission Setup slider track transparent padding was removed. Difficulty selected/off frames were rebuilt from user-provided button art with transparent outer background and preserved inner dark panel. Section title style, summary time display, summary card icon/text/card size, slider value/tick/thumb synchronization, Difficulty/LIMIT MODE spacing, and Start Mission text alignment were tuned while preserving non-scroll LayoutBuilder structure and gameplay behavior.
-- Remaining Issues: Final visual QA on real/emulated devices is still needed. Android viewport metrics issue is currently normal after `adjustNothing`; emulator GPU/virtgpu disconnect was normal with `--enable-software-rendering` and should be watched if it recurs. Task 2.3 widget split remains pending.
-- User Commands To Run: `dart format .`, `flutter analyze`, `flutter test`, `flutter run`
+- Changed Files: `lib/main.dart`, `android/app/src/main/AndroidManifest.xml`, `lib/features/game/game_screen.dart`, `lib/features/game/widgets/asset_frame.dart`, `lib/features/game/widgets/code_slots.dart`, `lib/features/game/widgets/number_keypad.dart`, `lib/features/game/widgets/guess_history_list.dart`, `lib/features/game/widgets/game_asset_paths.dart`, `assets/game/bomb_hero_*`, `assets/game/check_table_bulb_icon.png`, and docs update targets.
+- Summary: Applied multiple Game Screen final polish passes and locked the app to portrait for MVP. The active play flow is `Bomb HUD -> Current Code -> Keypad -> History`. History now reads as a single tactical panel with aligned `# / CODE / RESULT` header/body columns, subtle dark surface texture, faint separators, and no visible inner table frame. Check Table opens from a History-integrated circular bulb icon. `bomb_hero_critical.png` was optically reduced to match the other hero states more closely. Game logic, judge logic, config, domain/data, menu assets, and mission setup assets were not modified.
+- Remaining Issues: Latest History surface, Check Table icon placement, critical bomb optical size, portrait lock behavior, 360x800 overflow, touch targets, and font-scale behavior need live visual QA. Latest `dart format`, `flutter analyze`, `flutter test`, and run verification are still needed. DDS/Gradle Kotlin incremental issues may still affect live run.
+- User Commands To Run: `dart format .`, `flutter analyze`, `flutter test`, `flutter run --disable-dds --enable-software-rendering`; if Kotlin incremental storage recurs, clean Gradle caches and set `kotlin.incremental=false`.
 
 ---

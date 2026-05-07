@@ -69,7 +69,7 @@ class _ModeSelectScreenState extends State<ModeSelectScreen> {
             final sectionGap = (height * 0.03).clamp(18.0, 26.0);
             final limitSectionGap = (sectionGap * 2).clamp(36.0, 52.0);
             final topHeight = (height * 0.12).clamp(78.0, 98.0);
-            final difficultyHeight = (height * 0.108).clamp(66.0, 88.0);
+            final difficultyHeight = (height * 0.098).clamp(60.0, 78.0);
             final summaryHeight = (height * 0.148).clamp(90.0, 122.0);
             final limitHeight = (height * 0.335).clamp(220.0, 270.0);
             final startButtonHeight = (height * 0.082).clamp(44.0, 68.0);
@@ -224,13 +224,13 @@ class _DifficultySelector extends StatelessWidget {
         const SizedBox(height: 12),
         Expanded(
           child: FractionallySizedBox(
-            widthFactor: 1.05,
+            widthFactor: 0.94,
             child: Row(
               children: [
                 for (final difficulty in Difficulty.values)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 1),
+                      padding: const EdgeInsets.symmetric(horizontal: 2.5),
                       child: _DifficultyButton(
                         difficulty: difficulty,
                         selected: selected == difficulty,
