@@ -124,7 +124,17 @@ SafeArea
 
 고정 좌표는 불가피한 이미지맵 방식 또는 정밀한 장식 배치에만 제한적으로 사용한다.
 
-## 7. Button 규칙
+## 7. Result Screen UI 규칙
+
+- Result screens should feel like cinematic game scenes, not plain Flutter cards.
+- Use layered composition: background scene, dark/flash overlay if needed, panel/frame image, localized title image, Flutter-rendered dynamic text, and image-backed buttons.
+- Failure reveal should avoid strong full-screen solid-color flashes. Prefer scene-based effects: brief shake, brightness/contrast flicker, warm light over the background, and a shade reveal for the panel.
+- Failure result currently shows only the correct code in the answer area, paired with a cyber/metal key icon; do not show `ANSWER`, `ATTEMPTS`, or `TIME` labels on Failure unless requested.
+- Failure code row should stay centered, large, and readable inside the red outlined code box.
+- Failure `TRY AGAIN` and `HOME` buttons use image backgrounds, but labels remain Flutter text.
+- Preserve SafeArea, button visibility, and no bottom overflow on `360 x 800 dp` and smaller portrait heights.
+
+## 8. Button 규칙
 
 - 버튼은 실제 Flutter tap target이어야 한다.
 - 이미지 버튼도 `Semantics` label을 갖도록 한다.
@@ -134,7 +144,7 @@ SafeArea
 - Mission Setup과 Game Screen의 일반 UI part는 가능한 frame/icon image만 사용한다.
 - 일반 UI part의 text, number, `+`, `-`는 code에서 렌더링한다.
 
-## 8. Text / Localization UI 규칙
+## 9. Text / Localization UI 규칙
 
 - 화면은 기기 언어에 따라 Korean/English 자동 전환한다.
 - 현재 helper:
@@ -154,7 +164,7 @@ lib/core/constants/app_text.dart
 - Main Menu button은 공통 frame asset 위에 Flutter `Text`를 사용한다.
 - 그 외 대부분의 UI asset은 text 없는 frame/icon으로 만들고 Flutter text로 처리한다.
 
-## 9. Home / Main Menu UI 규칙
+## 10. Home / Main Menu UI 규칙
 
 Home screen은 다음 독립 image part를 조합해서 만든다.
 
@@ -217,7 +227,7 @@ assets/menu/main_menu_kor.png
 Galaxy S23 Ultra-like tall screens
 ```
 
-## 10. Mission Setup UI 규칙
+## 11. Mission Setup UI 규칙
 
 - Mission Setup은 사용자 요청 전까지 단일 non-scroll 화면 유지
 - `LayoutBuilder` 유지
@@ -242,7 +252,7 @@ plus_button.png                    112x112
 *_icon.png                         128x128
 ```
 
-## 11. Image Asset 생성 규칙
+## 12. Image Asset 생성 규칙
 
 일반 generated UI asset:
 
@@ -271,7 +281,7 @@ assets/menu/
 assets/mission_setup/
 ```
 
-## 12. BoxFit 규칙
+## 13. BoxFit 규칙
 
 - Full-screen background: `BoxFit.cover`
 - UI part image: 기본적으로 `BoxFit.contain`

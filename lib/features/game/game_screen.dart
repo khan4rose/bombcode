@@ -9,7 +9,6 @@ import '../../core/utils/game_sound_effects.dart';
 import '../../core/utils/timer_formatter.dart';
 import '../../core/widgets/app_background.dart';
 import '../../data/local_record_repository.dart';
-import '../../domain/enums/game_over_reason.dart';
 import '../../domain/enums/game_status.dart';
 import '../../domain/models/game_config.dart';
 import '../home/home_screen.dart';
@@ -36,6 +35,7 @@ class _GameScreenState extends State<GameScreen> {
   final _sounds = GameSoundEffects.instance;
   final _haptics = GameHaptics.instance;
   bool _saved = false;
+  bool _failureResultAssetsPrecached = false;
 
   @override
   void initState() {
@@ -61,6 +61,26 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_failureResultAssetsPrecached) {
+      return;
+    }
+    _failureResultAssetsPrecached = true;
+    for (final assetPath in const [
+      GameAssetPaths.failureSceneBg,
+      GameAssetPaths.failureResultPanel,
+      GameAssetPaths.resultFailureTitleEn,
+      GameAssetPaths.resultFailureTitleKo,
+      GameAssetPaths.resultButtonPrimary,
+      GameAssetPaths.resultButtonSecondary,
+      GameAssetPaths.resultKeyIcon,
+    ]) {
+      precacheImage(AssetImage(assetPath), context);
+    }
+  }
+
+  @override
   void dispose() {
     controller.removeListener(_saveFinishedRecord);
     controller.dispose();
@@ -75,6 +95,7 @@ class _GameScreenState extends State<GameScreen> {
         final status = controller.status;
         final finished =
             status == GameStatus.success || status == GameStatus.failed;
+        final failed = status == GameStatus.failed;
 
         return Scaffold(
           backgroundColor: Colors.black,
@@ -87,15 +108,26 @@ class _GameScreenState extends State<GameScreen> {
                   return Stack(
                     fit: StackFit.expand,
                     children: [
-                      _GameplayView(controller: controller),
+                      if (failed)
+                        const SizedBox.expand()
+                      else
+                        _GameplayView(controller: controller),
                       if (finished)
-                        _ResultOverlay(
-                          controller: controller,
-                          onRestart: () {
-                            _saved = false;
-                            controller.restartSameConfig();
-                          },
-                        ),
+                        failed
+                            ? _FailureResultOverlay(
+                                controller: controller,
+                                onRestart: () {
+                                  _saved = false;
+                                  controller.restartSameConfig();
+                                },
+                              )
+                            : _ResultOverlay(
+                                controller: controller,
+                                onRestart: () {
+                                  _saved = false;
+                                  controller.restartSameConfig();
+                                },
+                              ),
                     ],
                   );
                 },
@@ -120,20 +152,58 @@ class _GameplayView extends StatelessWidget {
         final width = constraints.maxWidth;
         final height = constraints.maxHeight;
         final compact = height < 760;
+        final short = height < 680;
         final padding = (width * 0.03).clamp(8.0, 14.0).toDouble();
-        final gap = compact ? 4.0 : 5.0;
+        final topPadding = (height * 0.006).clamp(2.0, 4.0).toDouble();
+        final bottomPadding = (height * 0.012).clamp(6.0, padding).toDouble();
+        final gap = (height * 0.006).clamp(3.0, compact ? 4.0 : 5.0).toDouble();
         final contentWidth = width - padding * 2;
-        final heroHeight = (contentWidth * 405 / 720)
-            .clamp(168.0, 202.0)
+        final minHeroHeight = short ? 132.0 : 168.0;
+        final preferredHeroHeight = (contentWidth * 405 / 720)
+            .clamp(minHeroHeight, compact ? 190.0 : 202.0)
             .toDouble();
         final codeHeight = (contentWidth * 180 / 680)
-            .clamp(48.0, 56.0)
+            .clamp(short ? 44.0 : 48.0, compact ? 52.0 : 56.0)
             .toDouble();
-        final keypadHeight = compact ? 200.0 : 204.0;
-        final historyMinHeight = compact ? 108.0 : 124.0;
+        final keypadHeight = short ? 198.0 : (compact ? 200.0 : 204.0);
+        final preferredHistoryMinHeight = (height * 0.16)
+            .clamp(short ? 92.0 : 108.0, compact ? 112.0 : 124.0)
+            .toDouble();
+        final availableHistoryHeight =
+            height -
+            topPadding -
+            bottomPadding -
+            codeHeight -
+            keypadHeight -
+            minHeroHeight -
+            gap * 3;
+        final historyMinHeight = math
+            .min(
+              preferredHistoryMinHeight,
+              math.max(short ? 72.0 : 108.0, availableHistoryHeight),
+            )
+            .toDouble();
+        final reservedHeight =
+            topPadding +
+            bottomPadding +
+            codeHeight +
+            keypadHeight +
+            historyMinHeight +
+            gap * 3;
+        final heroHeight = math
+            .min(
+              preferredHeroHeight,
+              math.max(minHeroHeight, height - reservedHeight),
+            )
+            .toDouble();
 
         return Padding(
-          padding: EdgeInsets.fromLTRB(padding, 4, padding, padding),
+          padding: EdgeInsets.fromLTRB(
+            padding,
+            topPadding,
+            padding,
+            bottomPadding,
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -1149,154 +1219,1041 @@ class _ResultOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final success = controller.status == GameStatus.success;
-    final reason = controller.gameOverReason;
-    final answer = controller.answer.join();
-    final title = success
-        ? (AppText.isKo ? '\uD574\uCCB4 \uC644\uB8CC' : 'MISSION COMPLETE')
-        : (AppText.isKo ? '\uD574\uCCB4 \uC2E4\uD328' : 'MISSION FAILED');
-    final subtitle = success
-        ? (AppText.isKo
-              ? '\uC554\uD638 \uD574\uB3C5 \uC131\uACF5'
-              : 'DEVICE DISARMED')
-        : switch (reason) {
-            GameOverReason.attemptsExhausted =>
-              AppText.isKo
-                  ? '\uC7A5\uCE58 \uD3ED\uC8FC \uBC1C\uC0DD'
-                  : 'DEVICE DETONATED',
-            GameOverReason.timeExpired =>
-              AppText.isKo ? '\uC2DC\uAC04 \uCD08\uACFC' : 'TIME EXPIRED',
-            GameOverReason.solved || null =>
-              AppText.isKo
-                  ? '\uB2E4\uC2DC \uB3C4\uC804\uD558\uC138\uC694'
-                  : 'TRY AGAIN',
-          };
-    final accent = success ? const Color(0xFF38F7D2) : const Color(0xFFFF493D);
+    final visuals = _ResultVisuals.forState(
+      success: success,
+      korean: AppText.isKo,
+    );
+    final strings = _ResultStrings.current;
 
-    return TweenAnimationBuilder<double>(
-      tween: Tween<double>(begin: 0, end: 1),
-      duration: const Duration(milliseconds: 420),
-      curve: Curves.easeOutCubic,
-      builder: (context, value, child) {
-        final modalScale = 0.94 + value * 0.06;
-        return Stack(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final screenHeight = constraints.maxHeight;
+        final compact = screenHeight < 760;
+        final short = screenHeight < 680;
+        final tight = screenHeight < 620;
+        final layoutScale = math
+            .min(screenWidth / 360.0, screenHeight / 800.0)
+            .clamp(0.76, 1.0)
+            .toDouble();
+        final horizontalInset = (screenWidth * 0.055)
+            .clamp(12.0, 22.0)
+            .toDouble();
+        final verticalInset = (screenHeight * 0.014)
+            .clamp(6.0, compact ? 10.0 : 14.0)
+            .toDouble();
+        final compositionWidth = (screenWidth * 0.90)
+            .clamp(292.0, 354.0)
+            .toDouble();
+        final maxCompositionHeight = math.max(
+          0.0,
+          screenHeight - verticalInset * 2,
+        );
+        final compositionFactor = tight
+            ? 0.70
+            : (short ? 0.68 : (compact ? 0.64 : 0.60));
+        final preferredCompositionHeight =
+            (compositionWidth * (success ? 1.18 : 1.24))
+                .clamp(360.0, success ? 420.0 : 440.0)
+                .toDouble();
+        final compositionHeight = math
+            .min(
+              preferredCompositionHeight,
+              math.min(maxCompositionHeight, screenHeight * compositionFactor),
+            )
+            .toDouble();
+        final compositionAlignment = Alignment(
+          0,
+          success
+              ? (tight ? 0.38 : (short ? 0.52 : 0.74))
+              : (tight ? 0.34 : (short ? 0.48 : 0.70)),
+        );
+
+        return TweenAnimationBuilder<double>(
+          tween: Tween<double>(begin: 0, end: 1),
+          duration: const Duration(milliseconds: 420),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, child) {
+            final compositionScale = 0.97 + value * 0.03;
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                const ColoredBox(color: Colors.black),
+                _ResultBackgroundLayer(visuals: visuals, opacity: value),
+                ModalBarrier(
+                  color: Colors.black.withValues(
+                    alpha: visuals.barrierOpacity * value,
+                  ),
+                  dismissible: false,
+                ),
+                _ResultAtmosphereLayer(visuals: visuals, opacity: value),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalInset,
+                    vertical: verticalInset,
+                  ),
+                  child: Align(
+                    alignment: compositionAlignment,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: visuals.panelShadowOpacity * value,
+                            ),
+                            blurRadius: success ? 38 : 46,
+                            spreadRadius: success ? 6 : 3,
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: compositionWidth,
+                        height: compositionHeight,
+                        child: Transform.scale(
+                          scale: compositionScale,
+                          child: Opacity(
+                            opacity: value,
+                            child: _ResultComposition(
+                              visuals: visuals,
+                              strings: strings,
+                              answer: controller.answer.join(),
+                              attempts: '${controller.history.length}',
+                              time: formatSeconds(controller.elapsedSeconds),
+                              layoutScale: layoutScale,
+                              tight: tight,
+                              onRestart: onRestart,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _FailureResultOverlay extends StatefulWidget {
+  final GameController controller;
+  final VoidCallback onRestart;
+
+  const _FailureResultOverlay({
+    required this.controller,
+    required this.onRestart,
+  });
+
+  @override
+  State<_FailureResultOverlay> createState() => _FailureResultOverlayState();
+}
+
+class _FailureResultOverlayState extends State<_FailureResultOverlay>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _revealController;
+
+  @override
+  void initState() {
+    super.initState();
+    _revealController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2050),
+    )..forward();
+  }
+
+  @override
+  void dispose() {
+    _revealController.dispose();
+    super.dispose();
+  }
+
+  void _skipReveal() {
+    if (!_revealController.isCompleted) {
+      _revealController.value = 1;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visuals = _ResultVisuals.forState(
+      success: false,
+      korean: AppText.isKo,
+    );
+    final strings = _ResultStrings.current;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final screenHeight = constraints.maxHeight;
+        final compact = screenHeight < 760;
+        final short = screenHeight < 680;
+        final tight = screenHeight < 620;
+        final layoutScale = math
+            .min(screenWidth / 360.0, screenHeight / 800.0)
+            .clamp(0.74, 1.0)
+            .toDouble();
+        final horizontalInset = (screenWidth * 0.052)
+            .clamp(10.0, 20.0)
+            .toDouble();
+        final verticalInset = (screenHeight * 0.012)
+            .clamp(5.0, compact ? 9.0 : 12.0)
+            .toDouble();
+        final compositionWidth = (screenWidth * 0.90)
+            .clamp(292.0, 350.0)
+            .toDouble();
+        final maxCompositionHeight = math.max(
+          0.0,
+          screenHeight - verticalInset * 2,
+        );
+        final compositionFactor = tight
+            ? 0.78
+            : (short ? 0.76 : (compact ? 0.73 : 0.68));
+        final preferredCompositionHeight = (compositionWidth * 1.46)
+            .clamp(398.0, 492.0)
+            .toDouble();
+        final compositionHeight = math
+            .min(
+              preferredCompositionHeight,
+              math.min(maxCompositionHeight, screenHeight * compositionFactor),
+            )
+            .toDouble();
+        final compositionAlignment = Alignment(
+          0,
+          tight ? 0.38 : (short ? 0.54 : 0.72),
+        );
+
+        return AnimatedBuilder(
+          animation: _revealController,
+          builder: (context, child) {
+            final value = _revealController.value;
+            final shakeValue = _timelineValue(
+              value,
+              0.0,
+              0.14,
+              Curves.easeOutCubic,
+            );
+            final shakeStrength = (1 - shakeValue) * 5.5 * layoutScale;
+            final shakeOffset = Offset(
+              math.sin(value * math.pi * 34) * shakeStrength,
+              math.cos(value * math.pi * 27) * shakeStrength * 0.42,
+            );
+            const backgroundValue = 1.0;
+            final flickerIn = _timelineValue(
+              value,
+              0.0,
+              0.04,
+              Curves.easeOutCubic,
+            );
+            final flickerOut =
+                1 - _timelineValue(value, 0.78, 0.84, Curves.easeOutCubic);
+            final flicker = math.pow(
+              math.max(0.0, math.sin(value * math.pi * 18)),
+              1.7,
+            );
+            final backgroundPulse = (flickerIn * flickerOut * flicker)
+                .clamp(0.0, 1.0)
+                .toDouble();
+            final panelValue = _timelineValue(
+              value,
+              0.73,
+              0.98,
+              Curves.easeOutCubic,
+            );
+            final titleValue = _timelineValue(
+              value,
+              0.73,
+              0.98,
+              Curves.easeOutBack,
+            );
+            final statsValue = _timelineValue(
+              value,
+              0.73,
+              0.98,
+              Curves.easeOutCubic,
+            );
+            final buttonsValue = _timelineValue(
+              value,
+              0.73,
+              0.98,
+              Curves.easeOutCubic,
+            );
+            final backgroundLift = Offset(0, -screenHeight * 0.092);
+            final revealing = !_revealController.isCompleted;
+
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                const ColoredBox(color: Colors.black),
+                Transform.translate(
+                  offset: shakeOffset + backgroundLift,
+                  child: Transform.scale(
+                    scale: 1.08,
+                    alignment: Alignment.topCenter,
+                    child: ColorFiltered(
+                      colorFilter: _impactColorFilter(backgroundPulse),
+                      child: _ResultBackgroundLayer(
+                        visuals: visuals,
+                        opacity: backgroundValue,
+                      ),
+                    ),
+                  ),
+                ),
+                _ExplosionFlickerOverlay(opacity: backgroundPulse),
+                ModalBarrier(
+                  color: Colors.black.withValues(
+                    alpha: visuals.barrierOpacity * backgroundValue,
+                  ),
+                  dismissible: false,
+                ),
+                Transform.translate(
+                  offset: shakeOffset,
+                  child: _ResultAtmosphereLayer(
+                    visuals: visuals,
+                    opacity: backgroundValue,
+                  ),
+                ),
+                Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalInset,
+                    vertical: verticalInset,
+                  ),
+                  child: Align(
+                    alignment: compositionAlignment,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(
+                              alpha: visuals.panelShadowOpacity * panelValue,
+                            ),
+                            blurRadius: 42,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: compositionWidth,
+                        height: compositionHeight,
+                        child: _FailureResultComposition(
+                          visuals: visuals,
+                          strings: strings,
+                          answer: widget.controller.answer.join(),
+                          layoutScale: layoutScale,
+                          tight: tight,
+                          panelOpacity: panelValue,
+                          panelSlide: (1 - panelValue) * 18.0 * layoutScale,
+                          revealShadeOpacity: (1 - panelValue) * 0.42,
+                          titleOpacity: titleValue.clamp(0.0, 1.0).toDouble(),
+                          titleScale: (0.89 + titleValue * 0.07)
+                              .clamp(0.89, 0.96)
+                              .toDouble(),
+                          statsOpacity: statsValue,
+                          buttonsOpacity: buttonsValue,
+                          actionsEnabled: !revealing,
+                          onRestart: widget.onRestart,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                if (revealing)
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _skipReveal,
+                    ),
+                  ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+double _timelineValue(double value, double begin, double end, Curve curve) {
+  final normalized = ((value - begin) / (end - begin))
+      .clamp(0.0, 1.0)
+      .toDouble();
+  return curve.transform(normalized);
+}
+
+ColorFilter _impactColorFilter(double pulse) {
+  final contrast = 1.0 + pulse * 0.42;
+  final brightness = pulse * 58.0;
+  final intercept = 128.0 * (1.0 - contrast) + brightness;
+
+  return ColorFilter.matrix([
+    contrast,
+    0,
+    0,
+    0,
+    intercept,
+    0,
+    contrast,
+    0,
+    0,
+    intercept,
+    0,
+    0,
+    contrast,
+    0,
+    intercept,
+    0,
+    0,
+    0,
+    1,
+    0,
+  ]);
+}
+
+class _ExplosionFlickerOverlay extends StatelessWidget {
+  final double opacity;
+
+  const _ExplosionFlickerOverlay({required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    if (opacity <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return IgnorePointer(
+      child: Opacity(
+        opacity: opacity,
+        child: Stack(
           fit: StackFit.expand,
           children: [
-            ModalBarrier(
-              color: Colors.black.withValues(alpha: 0.62 * value),
-              dismissible: false,
-            ),
-            Opacity(
-              opacity: 0.74 * value,
-              child: Image.asset(
-                success
-                    ? GameAssetPaths.bombDefusedOverlay
-                    : GameAssetPaths.bombExplodedOverlay,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-                filterQuality: FilterQuality.high,
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: const Alignment(0, -0.28),
+                  radius: 0.78,
+                  colors: [
+                    const Color(0xFFFFF0B8).withValues(alpha: 0.34),
+                    const Color(0xFFFF6A20).withValues(alpha: 0.16),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.34, 1.0],
+                ),
               ),
             ),
             DecoratedBox(
               decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.center,
-                  radius: 0.78,
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                   colors: [
-                    accent.withValues(alpha: 0.14 * value),
-                    Colors.black.withValues(alpha: 0.12 * value),
-                    Colors.black.withValues(alpha: 0.54 * value),
+                    Colors.white.withValues(alpha: 0.18),
+                    const Color(0xFFFF3B18).withValues(alpha: 0.08),
+                    Colors.transparent,
                   ],
-                  stops: const [0.0, 0.54, 1.0],
+                  stops: const [0.0, 0.42, 1.0],
                 ),
               ),
             ),
-            Center(
-              child: FractionallySizedBox(
-                widthFactor: 0.9,
-                child: Transform.scale(
-                  scale: modalScale,
-                  child: Opacity(
-                    opacity: value,
-                    child: AspectRatio(
-                      aspectRatio: 680 / 560,
-                      child: AssetFrame(
-                        assetPath: success
-                            ? GameAssetPaths.resultModalSuccess
-                            : GameAssetPaths.resultModalFailure,
-                        padding: const EdgeInsets.fromLTRB(46, 34, 46, 42),
-                        child: Column(
-                          children: [
-                            Text(
-                              title,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: success
-                                    ? const Color(0xFFE5FCFF)
-                                    : const Color(0xFFFFD8C4),
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                shadows: const [
-                                  Shadow(
-                                    color: Colors.black,
-                                    blurRadius: 8,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultVisuals {
+  final bool success;
+  final String backgroundAsset;
+  final String panelAsset;
+  final String titleAsset;
+  final String fallbackTitle;
+  final String fallbackSubtitle;
+  final Color accent;
+  final Color softAccent;
+  final double backgroundOpacity;
+  final double barrierOpacity;
+  final double panelShadowOpacity;
+
+  const _ResultVisuals({
+    required this.success,
+    required this.backgroundAsset,
+    required this.panelAsset,
+    required this.titleAsset,
+    required this.fallbackTitle,
+    required this.fallbackSubtitle,
+    required this.accent,
+    required this.softAccent,
+    required this.backgroundOpacity,
+    required this.barrierOpacity,
+    required this.panelShadowOpacity,
+  });
+
+  static _ResultVisuals forState({
+    required bool success,
+    required bool korean,
+  }) {
+    return _ResultVisuals(
+      success: success,
+      backgroundAsset: GameAssetPaths.resultBackground(success: success),
+      panelAsset: GameAssetPaths.resultPanel(success: success),
+      titleAsset: GameAssetPaths.resultTitle(success: success, korean: korean),
+      fallbackTitle: success
+          ? (korean ? '\uBBF8\uC158 \uC131\uACF5' : 'MISSION COMPLETE')
+          : (korean ? '\uBBF8\uC158 \uC2E4\uD328' : 'MISSION FAILED'),
+      fallbackSubtitle: success
+          ? (korean
+                ? '\uC7A5\uCE58 \uD574\uC81C \uC131\uACF5'
+                : 'DEVICE DEFUSED')
+          : (korean
+                ? '\uC7A5\uCE58\uAC00 \uD3ED\uBC1C\uD588\uC2B5\uB2C8\uB2E4'
+                : 'DEVICE DETONATED'),
+      accent: success ? const Color(0xFF38F7D2) : const Color(0xFFFF493D),
+      softAccent: success ? const Color(0xFFE5FCFF) : const Color(0xFFFFC6AE),
+      backgroundOpacity: success ? 0.94 : 1.0,
+      barrierOpacity: success ? 0.14 : 0.10,
+      panelShadowOpacity: success ? 0.64 : 0.78,
+    );
+  }
+}
+
+class _ResultStrings {
+  final String answer;
+  final String attempts;
+  final String time;
+  final String tryAgain;
+  final String home;
+
+  const _ResultStrings({
+    required this.answer,
+    required this.attempts,
+    required this.time,
+    required this.tryAgain,
+    required this.home,
+  });
+
+  static _ResultStrings get current => AppText.isKo ? ko : en;
+
+  static const en = _ResultStrings(
+    answer: 'Answer',
+    attempts: 'Attempts',
+    time: 'Time',
+    tryAgain: 'Try Again',
+    home: 'Home',
+  );
+
+  static const ko = _ResultStrings(
+    answer: '\uC815\uB2F5',
+    attempts: '\uC2DC\uB3C4 \uD69F\uC218',
+    time: '\uC2DC\uAC04',
+    tryAgain: '\uB2E4\uC2DC \uC2DC\uB3C4',
+    home: '\uD648\uC73C\uB85C',
+  );
+}
+
+class _ResultBackgroundLayer extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final double opacity;
+
+  const _ResultBackgroundLayer({required this.visuals, required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Opacity(
+          opacity: visuals.backgroundOpacity * opacity,
+          child: Image.asset(
+            visuals.backgroundAsset,
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+            filterQuality: FilterQuality.high,
+            errorBuilder: (context, error, stackTrace) {
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0, -0.35),
+                    radius: 1.0,
+                    colors: [
+                      visuals.accent.withValues(alpha: 0.18),
+                      const Color(0xFF151515),
+                      Colors.black,
+                    ],
+                    stops: const [0.0, 0.48, 1.0],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Colors.black.withValues(alpha: 0.08 * opacity),
+                Colors.transparent,
+                Colors.black.withValues(alpha: 0.52 * opacity),
+              ],
+              stops: const [0.0, 0.44, 1.0],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResultAtmosphereLayer extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final double opacity;
+
+  const _ResultAtmosphereLayer({required this.visuals, required this.opacity});
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = visuals.accent;
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.20),
+                radius: 0.94,
+                colors: [
+                  accent.withValues(
+                    alpha: (visuals.success ? 0.18 : 0.13) * opacity,
+                  ),
+                  Colors.transparent,
+                  Colors.black.withValues(
+                    alpha: (visuals.success ? 0.25 : 0.16) * opacity,
+                  ),
+                ],
+                stops: const [0.0, 0.52, 1.0],
+              ),
+            ),
+          ),
+          Align(
+            alignment: const Alignment(0, 0.72),
+            child: FractionallySizedBox(
+              widthFactor: 0.98,
+              heightFactor: 0.36,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.70 * opacity),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FailureResultComposition extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final _ResultStrings strings;
+  final String answer;
+  final double layoutScale;
+  final bool tight;
+  final double panelOpacity;
+  final double panelSlide;
+  final double revealShadeOpacity;
+  final double titleOpacity;
+  final double titleScale;
+  final double statsOpacity;
+  final double buttonsOpacity;
+  final bool actionsEnabled;
+  final VoidCallback onRestart;
+
+  const _FailureResultComposition({
+    required this.visuals,
+    required this.strings,
+    required this.answer,
+    required this.layoutScale,
+    required this.tight,
+    required this.panelOpacity,
+    required this.panelSlide,
+    required this.revealShadeOpacity,
+    required this.titleOpacity,
+    required this.titleScale,
+    required this.statsOpacity,
+    required this.buttonsOpacity,
+    required this.actionsEnabled,
+    required this.onRestart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        final titleTop = height * (tight ? 0.148 : 0.174);
+        final titleHeight = height * (tight ? 0.272 : 0.300);
+        final titleInset = (width * 0.070).clamp(18.0, 28.0).toDouble();
+        final contentTop = height * (tight ? 0.466 : 0.500);
+        final contentBottom = height * (tight ? 0.045 : 0.055);
+        final contentInset = (width * 0.145).clamp(36.0, 50.0).toDouble();
+
+        return Transform.translate(
+          offset: Offset(0, panelSlide),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Opacity(
+                opacity: panelOpacity,
+                child: Image.asset(
+                  visuals.panelAsset,
+                  fit: BoxFit.fill,
+                  filterQuality: FilterQuality.high,
+                  errorBuilder: (context, error, stackTrace) {
+                    return CustomPaint(
+                      painter: _ResultPanelFallbackPainter(visuals: visuals),
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                top: titleTop,
+                left: titleInset,
+                right: titleInset,
+                height: titleHeight,
+                child: Opacity(
+                  opacity: titleOpacity,
+                  child: Transform.scale(
+                    scale: titleScale,
+                    child: _ResultTitleImage(visuals: visuals),
+                  ),
+                ),
+              ),
+              Positioned(
+                top: contentTop,
+                left: contentInset,
+                right: contentInset,
+                bottom: contentBottom,
+                child: _FailureResultDynamicLayer(
+                  visuals: visuals,
+                  strings: strings,
+                  answer: answer,
+                  layoutScale: layoutScale,
+                  statsOpacity: statsOpacity,
+                  buttonsOpacity: buttonsOpacity,
+                  actionsEnabled: actionsEnabled,
+                  onRestart: onRestart,
+                ),
+              ),
+              if (revealShadeOpacity > 0)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(
+                              alpha: revealShadeOpacity * 0.78,
                             ),
-                            const SizedBox(height: 14),
-                            Text(
-                              subtitle,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(height: 14),
-                            Expanded(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  _Fact(label: AppText.answer, value: answer),
-                                  _Fact(
-                                    label: AppText.attempts,
-                                    value: '${controller.history.length}',
-                                  ),
-                                  _Fact(
-                                    label: AppText.time,
-                                    value: formatSeconds(
-                                      controller.elapsedSeconds,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            _ModalActionButton(
-                              assetPath: GameAssetPaths.modalPrimaryButton,
-                              label: AppText.tryAgain,
-                              onTap: onRestart,
-                            ),
-                            const SizedBox(height: 10),
-                            _ModalActionButton(
-                              assetPath: GameAssetPaths.modalSecondaryButton,
-                              label: AppText.home,
-                              onTap: () =>
-                                  Navigator.of(context).pushAndRemoveUntil(
-                                    MaterialPageRoute(
-                                      builder: (_) => const HomeScreen(),
-                                    ),
-                                    (route) => false,
-                                  ),
-                            ),
+                            Colors.black.withValues(alpha: revealShadeOpacity),
                           ],
                         ),
                       ),
                     ),
                   ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ResultComposition extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final _ResultStrings strings;
+  final String answer;
+  final String attempts;
+  final String time;
+  final double layoutScale;
+  final bool tight;
+  final VoidCallback onRestart;
+
+  const _ResultComposition({
+    required this.visuals,
+    required this.strings,
+    required this.answer,
+    required this.attempts,
+    required this.time,
+    required this.layoutScale,
+    required this.tight,
+    required this.onRestart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        final titleTop = height * (tight ? 0.034 : 0.040);
+        final titleHeight = height * (tight ? 0.318 : 0.340);
+        final titleInset = (width * 0.030).clamp(8.0, 16.0).toDouble();
+        final contentTop =
+            titleTop + titleHeight + height * (tight ? 0.000 : 0.008);
+        final contentBottom = height * (tight ? 0.040 : 0.050);
+        final contentInset = (width * 0.125).clamp(34.0, 46.0).toDouble();
+
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              visuals.panelAsset,
+              fit: BoxFit.fill,
+              filterQuality: FilterQuality.high,
+              errorBuilder: (context, error, stackTrace) {
+                return CustomPaint(
+                  painter: _ResultPanelFallbackPainter(visuals: visuals),
+                );
+              },
+            ),
+            Positioned(
+              top: titleTop,
+              left: titleInset,
+              right: titleInset,
+              height: titleHeight,
+              child: _ResultTitleImage(visuals: visuals),
+            ),
+            Positioned(
+              top: contentTop,
+              left: contentInset,
+              right: contentInset,
+              bottom: contentBottom,
+              child: _ResultDynamicLayer(
+                visuals: visuals,
+                strings: strings,
+                answer: answer,
+                attempts: attempts,
+                time: time,
+                layoutScale: layoutScale,
+                onRestart: onRestart,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ResultTitleImage extends StatelessWidget {
+  final _ResultVisuals visuals;
+
+  const _ResultTitleImage({required this.visuals});
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      visuals.titleAsset,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (context, error, stackTrace) {
+        return _ResultTitleFallback(visuals: visuals);
+      },
+    );
+  }
+}
+
+class _ResultTitleFallback extends StatelessWidget {
+  final _ResultVisuals visuals;
+
+  const _ResultTitleFallback({required this.visuals});
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            visuals.fallbackTitle,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: visuals.accent,
+              fontSize: 42,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+              shadows: [
+                Shadow(
+                  color: visuals.accent.withValues(alpha: 0.65),
+                  blurRadius: 12,
+                ),
+                const Shadow(
+                  color: Colors.black,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            visuals.fallbackSubtitle,
+            maxLines: 1,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: visuals.softAccent,
+              fontSize: 18,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0,
+              shadows: const [
+                Shadow(
+                  color: Colors.black,
+                  blurRadius: 8,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FailureResultDynamicLayer extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final _ResultStrings strings;
+  final String answer;
+  final double layoutScale;
+  final double statsOpacity;
+  final double buttonsOpacity;
+  final bool actionsEnabled;
+  final VoidCallback onRestart;
+
+  const _FailureResultDynamicLayer({
+    required this.visuals,
+    required this.strings,
+    required this.answer,
+    required this.layoutScale,
+    required this.statsOpacity,
+    required this.buttonsOpacity,
+    required this.actionsEnabled,
+    required this.onRestart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final height = constraints.maxHeight;
+        final scale = math
+            .min(layoutScale, math.min(width / 245.0, height / 250.0))
+            .clamp(0.72, 1.0)
+            .toDouble();
+        final availableHeight = height;
+        final primaryButtonHeight = (availableHeight * 0.188)
+            .clamp(40.0, 48.0)
+            .toDouble();
+        final secondaryButtonHeight = (availableHeight * 0.174)
+            .clamp(37.0, 44.0)
+            .toDouble();
+        final buttonGap = (availableHeight * 0.055).clamp(9.0, 12.0).toDouble();
+        final statsGap = (availableHeight * 0.105).clamp(16.0, 28.0).toDouble();
+        final statsHeight = math
+            .min(availableHeight * 0.290, 76.0)
+            .clamp(58.0, 76.0)
+            .toDouble();
+        final topPad = math
+            .max(
+              0.0,
+              (availableHeight -
+                      statsHeight -
+                      statsGap -
+                      primaryButtonHeight -
+                      secondaryButtonHeight -
+                      buttonGap) *
+                  0.22,
+            )
+            .toDouble();
+        final primaryButtonPadding = EdgeInsets.symmetric(
+          horizontal: (primaryButtonHeight * 0.72).clamp(26.0, 36.0).toDouble(),
+          vertical: (primaryButtonHeight * 0.19).clamp(7.0, 12.0).toDouble(),
+        );
+        final secondaryButtonPadding = EdgeInsets.symmetric(
+          horizontal: (secondaryButtonHeight * 0.72)
+              .clamp(24.0, 34.0)
+              .toDouble(),
+          vertical: (secondaryButtonHeight * 0.20).clamp(6.0, 11.0).toDouble(),
+        );
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(height: topPad),
+            Opacity(
+              opacity: statsOpacity,
+              child: SizedBox(
+                height: statsHeight,
+                child: _FailureCodePanel(
+                  visuals: visuals,
+                  code: answer,
+                  scale: scale,
+                ),
+              ),
+            ),
+            SizedBox(height: statsGap),
+            IgnorePointer(
+              ignoring: !actionsEnabled,
+              child: Opacity(
+                opacity: buttonsOpacity,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _ModalActionButton(
+                      assetPath: GameAssetPaths.resultButtonPrimary,
+                      label: strings.tryAgain,
+                      height: primaryButtonHeight,
+                      padding: primaryButtonPadding,
+                      materialPolish: true,
+                      polishAccent: visuals.accent,
+                      materialPolishStrength: 1.0,
+                      labelGlowStrength: 0.10,
+                      onTap: onRestart,
+                    ),
+                    SizedBox(height: buttonGap),
+                    _ModalActionButton(
+                      assetPath: GameAssetPaths.resultButtonSecondary,
+                      label: strings.home,
+                      height: secondaryButtonHeight,
+                      padding: secondaryButtonPadding,
+                      materialPolish: true,
+                      polishAccent: visuals.accent,
+                      materialPolishStrength: 0.88,
+                      labelGlowStrength: 0.07,
+                      onTap: () => Navigator.of(context).pushAndRemoveUntil(
+                        MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        (route) => false,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1307,42 +2264,100 @@ class _ResultOverlay extends StatelessWidget {
   }
 }
 
-class _ModalActionButton extends StatelessWidget {
-  final String assetPath;
-  final String label;
-  final VoidCallback onTap;
+class _FailureCodePanel extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final String code;
+  final double scale;
 
-  const _ModalActionButton({
-    required this.assetPath,
-    required this.label,
-    required this.onTap,
+  const _FailureCodePanel({
+    required this.visuals,
+    required this.code,
+    required this.scale,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: SizedBox(
-        height: 52,
-        child: AssetFrame(
-          assetPath: assetPath,
-          padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 12),
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label.toUpperCase(),
-              maxLines: 1,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0,
-                shadows: [
-                  Shadow(
-                    color: Colors.black,
-                    blurRadius: 8,
-                    offset: Offset(0, 2),
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.42),
+        border: Border.all(
+          color: visuals.accent.withValues(alpha: 0.44),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: visuals.accent.withValues(alpha: 0.12),
+            blurRadius: 12 * scale,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 10 * scale,
+          vertical: 5 * scale,
+        ),
+        child: Center(
+          child: Transform.translate(
+            offset: Offset(-4.0 * scale, 0),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Transform.translate(
+                    offset: Offset(-3.5 * scale, -0.5 * scale),
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        boxShadow: [
+                          BoxShadow(
+                            color: visuals.accent.withValues(alpha: 0.20),
+                            blurRadius: 10 * scale,
+                            spreadRadius: -2 * scale,
+                          ),
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            blurRadius: 6 * scale,
+                            spreadRadius: -3 * scale,
+                          ),
+                        ],
+                      ),
+                      child: SizedBox(
+                        width: 63 * scale,
+                        height: 63 * scale,
+                        child: Image.asset(
+                          GameAssetPaths.resultKeyIcon,
+                          fit: BoxFit.contain,
+                          filterQuality: FilterQuality.high,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: 7 * scale),
+                  Transform.translate(
+                    offset: Offset(-4.0 * scale, 0),
+                    child: Text(
+                      code,
+                      maxLines: 1,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 51 * scale,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0 * scale,
+                        shadows: [
+                          Shadow(
+                            color: visuals.accent.withValues(alpha: 0.42),
+                            blurRadius: 12,
+                          ),
+                          const Shadow(
+                            color: Colors.black,
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1354,41 +2369,438 @@ class _ModalActionButton extends StatelessWidget {
   }
 }
 
-class _Fact extends StatelessWidget {
-  final String label;
-  final String value;
+class _ResultDynamicLayer extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final _ResultStrings strings;
+  final String answer;
+  final String attempts;
+  final String time;
+  final double layoutScale;
+  final VoidCallback onRestart;
 
-  const _Fact({required this.label, required this.value});
+  const _ResultDynamicLayer({
+    required this.visuals,
+    required this.strings,
+    required this.answer,
+    required this.attempts,
+    required this.time,
+    required this.layoutScale,
+    required this.onRestart,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final layerScale = math
+            .min(constraints.maxWidth / 260.0, constraints.maxHeight / 235.0)
+            .clamp(0.76, 1.0)
+            .toDouble();
+        final scale = math
+            .min(layoutScale, layerScale)
+            .clamp(0.76, 1.0)
+            .toDouble();
+        final gap = (constraints.maxHeight * 0.024).clamp(5.0, 8.0).toDouble();
+        final topGap = (constraints.maxHeight * 0.012)
+            .clamp(0.0, 5.0)
+            .toDouble();
+        final buttonHeight = (44.0 * scale).clamp(38.0, 44.0).toDouble();
+
+        return Column(
+          children: [
+            SizedBox(height: topGap),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: SizedBox(
+                width: constraints.maxWidth,
+                child: _ResultStatsGrid(
+                  visuals: visuals,
+                  scale: scale,
+                  rows: [
+                    _ResultStatData(label: strings.answer, value: answer),
+                    _ResultStatData(label: strings.attempts, value: attempts),
+                    _ResultStatData(label: strings.time, value: time),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: gap * 1.4),
+            Column(
+              children: [
+                _ModalActionButton(
+                  assetPath: GameAssetPaths.modalPrimaryButton,
+                  label: strings.tryAgain,
+                  height: buttonHeight,
+                  onTap: onRestart,
+                ),
+                SizedBox(height: gap),
+                _ModalActionButton(
+                  assetPath: GameAssetPaths.modalSecondaryButton,
+                  label: strings.home,
+                  height: buttonHeight,
+                  onTap: () => Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                    (route) => false,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ResultStatData {
+  final String label;
+  final String value;
+
+  const _ResultStatData({required this.label, required this.value});
+}
+
+class _ResultStatsGrid extends StatelessWidget {
+  final _ResultVisuals visuals;
+  final double scale;
+  final List<_ResultStatData> rows;
+
+  const _ResultStatsGrid({
+    required this.visuals,
+    required this.scale,
+    required this.rows,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: visuals.success ? 0.38 : 0.46),
+        border: Border.all(
+          color: visuals.accent.withValues(
+            alpha: visuals.success ? 0.25 : 0.34,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: visuals.accent.withValues(
+              alpha: visuals.success ? 0.07 : 0.10,
+            ),
+            blurRadius: 10 * scale,
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: 10 * scale,
+          vertical: 5 * scale,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < rows.length; index++) ...[
+              _ResultStatRow(
+                data: rows[index],
+                scale: scale,
+                accent: visuals.accent,
+              ),
+              if (index != rows.length - 1)
+                _ResultStatDivider(accent: visuals.accent),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ResultStatDivider extends StatelessWidget {
+  final Color accent;
+
+  const _ResultStatDivider({required this.accent});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 1,
+      child: DecoratedBox(
+        decoration: BoxDecoration(color: accent.withValues(alpha: 0.18)),
+      ),
+    );
+  }
+}
+
+class _ResultStatRow extends StatelessWidget {
+  final _ResultStatData data;
+  final double scale;
+  final Color accent;
+
+  const _ResultStatRow({
+    required this.data,
+    required this.scale,
+    required this.accent,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: (31 * scale).clamp(24.0, 31.0).toDouble(),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            label.toUpperCase(),
-            style: const TextStyle(
-              color: Colors.white70,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0,
+          Expanded(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                data.label.toUpperCase(),
+                maxLines: 1,
+                style: TextStyle(
+                  color: const Color(0xD8FFFFFF),
+                  fontSize: 12 * scale,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                ),
+              ),
             ),
           ),
+          SizedBox(width: 12 * scale),
           Flexible(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerRight,
+              child: Text(
+                data.value,
+                maxLines: 1,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15 * scale,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0,
+                  shadows: [
+                    Shadow(
+                      color: accent.withValues(alpha: 0.34),
+                      blurRadius: 8,
+                    ),
+                    const Shadow(
+                      color: Colors.black,
+                      blurRadius: 6,
+                      offset: Offset(0, 1),
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ResultPanelFallbackPainter extends CustomPainter {
+  final _ResultVisuals visuals;
+
+  const _ResultPanelFallbackPainter({required this.visuals});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final path = Path()
+      ..moveTo(size.width * 0.08, 0)
+      ..lineTo(size.width * 0.92, 0)
+      ..lineTo(size.width, size.height * 0.08)
+      ..lineTo(size.width, size.height * 0.92)
+      ..lineTo(size.width * 0.92, size.height)
+      ..lineTo(size.width * 0.08, size.height)
+      ..lineTo(0, size.height * 0.92)
+      ..lineTo(0, size.height * 0.08)
+      ..close();
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: const [Color(0xF2242529), Color(0xF508090B)],
+        ).createShader(rect),
+    );
+    canvas.drawPath(
+      path,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = visuals.accent.withValues(alpha: 0.62),
+    );
+    final inner = rect.deflate(11);
+    canvas.drawRect(
+      inner,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = Colors.white.withValues(alpha: 0.14),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ResultPanelFallbackPainter oldDelegate) {
+    return oldDelegate.visuals != visuals;
+  }
+}
+
+class _ModalActionButton extends StatelessWidget {
+  final String assetPath;
+  final String label;
+  final VoidCallback onTap;
+  final double height;
+  final EdgeInsetsGeometry? padding;
+  final bool materialPolish;
+  final Color? polishAccent;
+  final double materialPolishStrength;
+  final double labelGlowStrength;
+
+  const _ModalActionButton({
+    required this.assetPath,
+    required this.label,
+    required this.onTap,
+    this.height = 52,
+    this.padding,
+    this.materialPolish = false,
+    this.polishAccent,
+    this.materialPolishStrength = 1.0,
+    this.labelGlowStrength = 0.0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedPadding =
+        padding ?? const EdgeInsets.symmetric(horizontal: 34, vertical: 12);
+    final labelWidget = _ModalButtonLabel(
+      label,
+      glowStrength: labelGlowStrength,
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: SizedBox(
+        height: height,
+        child: materialPolish
+            ? Stack(
+                fit: StackFit.expand,
+                children: [
+                  AssetFrame(
+                    assetPath: assetPath,
+                    backing: _ButtonMetalBacking(
+                      accent: polishAccent ?? const Color(0xFFFF493D),
+                      strength: materialPolishStrength,
+                    ),
+                  ),
+                  IgnorePointer(
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.white.withValues(
+                              alpha: 0.10 * materialPolishStrength,
+                            ),
+                            Colors.transparent,
+                            Colors.black.withValues(
+                              alpha: 0.14 * materialPolishStrength,
+                            ),
+                          ],
+                          stops: const [0.0, 0.48, 1.0],
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: resolvedPadding,
+                    child: Align(child: labelWidget),
+                  ),
+                ],
+              )
+            : AssetFrame(
+                assetPath: assetPath,
+                padding: resolvedPadding,
+                child: labelWidget,
+              ),
+      ),
+    );
+  }
+}
+
+class _ButtonMetalBacking extends StatelessWidget {
+  final Color accent;
+  final double strength;
+
+  const _ButtonMetalBacking({required this.accent, required this.strength});
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            const Color(0xFF3A3D42).withValues(alpha: 0.82 + 0.10 * strength),
+            const Color(0xFF121417).withValues(alpha: 0.98),
+            const Color(0xFF050607).withValues(alpha: 1.0),
+          ],
+          stops: const [0.0, 0.48, 1.0],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.16 * strength),
+            blurRadius: 10,
+            spreadRadius: -2,
+          ),
+          BoxShadow(
+            color: Colors.white.withValues(alpha: 0.08 * strength),
+            blurRadius: 4,
+            spreadRadius: -3,
+            offset: const Offset(0, -1),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ModalButtonLabel extends StatelessWidget {
+  final String label;
+  final double glowStrength;
+
+  const _ModalButtonLabel(this.label, {this.glowStrength = 0.0});
+
+  @override
+  Widget build(BuildContext context) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        label.toUpperCase(),
+        maxLines: 1,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 20,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 0,
+          shadows: [
+            if (glowStrength > 0)
+              Shadow(
+                color: Colors.white.withValues(alpha: glowStrength),
+                blurRadius: 5,
+              ),
+            const Shadow(
+              color: Colors.black,
+              blurRadius: 8,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
       ),
     );
   }

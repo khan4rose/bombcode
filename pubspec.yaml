@@ -61,6 +61,7 @@ flutter:
     - assets/menu/
     - assets/mission_setup/
     - assets/game/
+    - assets/game/result/
 
   # To add assets to your application, add an assets section, like this:
   # assets:

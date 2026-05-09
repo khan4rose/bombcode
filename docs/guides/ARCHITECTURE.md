@@ -503,5 +503,5 @@ test/
 - feature 단위로 작게 나눈다.
 - logic, UI, asset 변경을 한 task에 섞지 않는다.
 - 기존 routing과 `GameConfig` 흐름을 깨지 않는다.
-- 화면 구조 변경 전 `docs/PROJECT_STATUS.md`와 `docs/NEXT_TASKS.md`를 확인한다.
+- 화면 구조 변경 전 `docs/core/MASTER_CONTEXT.md`와 `docs/core/NEXT_TASKS.md`를 확인한다.
 - 구조 변경 후 문서의 실제 구조 설명이 달라지면 이 문서를 업데이트한다.

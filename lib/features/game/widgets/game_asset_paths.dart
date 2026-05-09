@@ -32,8 +32,39 @@ class GameAssetPaths {
   static const pauseModalPanel = 'assets/game/pause_modal_panel.png';
   static const resultModalSuccess = 'assets/game/result_modal_success.png';
   static const resultModalFailure = 'assets/game/result_modal_failure.png';
+  static const failureSceneBg = 'assets/game/result/failure_scene_bg.png';
+  static const failureResultPanel =
+      'assets/game/result/failure_result_panel.png';
+  static const resultFailureBackground = failureSceneBg;
+  static const resultSuccessBackground = 'assets/game/result/success_bg.png';
+  static const resultFailurePanel = failureResultPanel;
+  static const resultSuccessPanel = 'assets/game/result/success_panel.png';
+  static const resultFailureTitleEn = 'assets/game/result/failure_title_en.png';
+  static const resultFailureTitleKo = 'assets/game/result/failure_title_ko.png';
+  static const resultSuccessTitleEn = 'assets/game/result/success_title_en.png';
+  static const resultSuccessTitleKo = 'assets/game/result/success_title_ko.png';
+  static const resultButtonPrimary =
+      'assets/game/result/result_button_primary.png';
+  static const resultButtonSecondary =
+      'assets/game/result/result_button_secondary.png';
+  static const resultKeyIcon = 'assets/game/result/result_key_icon.png';
   static const bombDefusedOverlay = 'assets/game/bomb_defused_overlay.png';
   static const bombExplodedOverlay = 'assets/game/bomb_exploded_overlay.png';
   static const modalPrimaryButton = 'assets/game/modal_primary_button.png';
   static const modalSecondaryButton = 'assets/game/modal_secondary_button.png';
+
+  static String resultBackground({required bool success}) {
+    return success ? resultSuccessBackground : resultFailureBackground;
+  }
+
+  static String resultPanel({required bool success}) {
+    return success ? resultSuccessPanel : resultFailurePanel;
+  }
+
+  static String resultTitle({required bool success, required bool korean}) {
+    if (success) {
+      return korean ? resultSuccessTitleKo : resultSuccessTitleEn;
+    }
+    return korean ? resultFailureTitleKo : resultFailureTitleEn;
+  }
 }
