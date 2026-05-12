@@ -174,7 +174,7 @@ class _ActionButton extends StatelessWidget {
           label,
           maxLines: 1,
           style: TextStyle(
-            color: onTap == null ? Colors.white54 : Colors.white,
+            color: onTap == null ? Colors.white54 : const Color(0xFFF6FCFF),
             fontSize: 15,
             fontWeight: FontWeight.w900,
             shadows: const [

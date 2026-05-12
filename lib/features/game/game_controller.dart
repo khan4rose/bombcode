@@ -26,6 +26,7 @@ class GameController extends ChangeNotifier {
   GameStatus status = GameStatus.ready;
   GameOverReason? gameOverReason;
   Timer? _timer;
+  bool _timerStarted = false;
 
   bool get isComplete =>
       config != null && currentGuess.length == config!.codeLength;
@@ -35,6 +36,7 @@ class GameController extends ChangeNotifier {
 
   void start(GameConfig config) {
     _timer?.cancel();
+    _timer = null;
     this.config = config;
     answer = generateAnswer(length: config.codeLength);
     currentGuess = [];
@@ -47,7 +49,7 @@ class GameController extends ChangeNotifier {
     elapsedSeconds = 0;
     gameOverReason = null;
     status = GameStatus.playing;
-    _startTimerIfNeeded();
+    _timerStarted = false;
     notifyListeners();
   }
 
@@ -76,6 +78,46 @@ class GameController extends ChangeNotifier {
       return;
     }
     currentGuess = [...currentGuess, digit];
+    _startTimerIfNeeded();
+    notifyListeners();
+  }
+
+  void replaceDigitAt(int index, int digit) {
+    final cfg = config;
+    if (cfg == null || status != GameStatus.playing) {
+      return;
+    }
+    if (index < 0 || index >= currentGuess.length || index >= cfg.codeLength) {
+      return;
+    }
+    final existingIndex = currentGuess.indexOf(digit);
+    if (existingIndex != -1 && existingIndex != index) {
+      return;
+    }
+    if (currentGuess[index] == digit) {
+      return;
+    }
+    final nextGuess = [...currentGuess];
+    nextGuess[index] = digit;
+    currentGuess = nextGuess;
+    _startTimerIfNeeded();
+    notifyListeners();
+  }
+
+  void setCurrentGuess(List<int> digits) {
+    final cfg = config;
+    if (cfg == null || status != GameStatus.playing) {
+      return;
+    }
+    if (digits.length > cfg.codeLength ||
+        digits.toSet().length != digits.length) {
+      return;
+    }
+    if (_sameDigits(currentGuess, digits)) {
+      return;
+    }
+    currentGuess = List<int>.of(digits);
+    _startTimerIfNeeded();
     notifyListeners();
   }
 
@@ -135,6 +177,9 @@ class GameController extends ChangeNotifier {
     if (status != GameStatus.playing) {
       return;
     }
+    if (usesTime && !_timerStarted) {
+      return;
+    }
     elapsedSeconds++;
     if (usesTime) {
       remainingSeconds = (remainingSeconds ?? 0) - 1;
@@ -169,20 +214,34 @@ class GameController extends ChangeNotifier {
   }
 
   void _startTimerIfNeeded() {
-    if (!usesTime) {
+    if (!usesTime || _timerStarted) {
       return;
     }
+    _timerStarted = true;
     _timer = Timer.periodic(const Duration(seconds: 1), (_) => tickOneSecond());
   }
 
   void _finish(GameOverReason reason) {
     _timer?.cancel();
+    _timer = null;
     gameOverReason = reason;
     status = reason == GameOverReason.solved
         ? GameStatus.success
         : GameStatus.failed;
     currentGuess = [];
     notifyListeners();
+  }
+
+  bool _sameDigits(List<int> a, List<int> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _updateAutoMarks(List<int> guess, JudgeResult result) {

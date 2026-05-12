@@ -48,6 +48,9 @@ Codex should not read this file for every task; read it only when historical con
 ### Game Logic
 
 - Game supports answer generation, digit input, delete, submit, timer, success/failure, and records.
+- Current Code input now supports selecting a specific filled slot and replacing that digit from the keypad while preserving duplicate digit prevention.
+- Delete now clears the selected Current Code slot first and leaves it selected for immediate replacement; without a selected slot it keeps the original last-input delete behavior.
+- Time-limit countdown now waits until the first valid keypad/input edit before starting.
 - `Access`/`Trace` judging is covered by tests.
 - Attempts OFF is represented by `GameConfig.maxAttempts == null`.
 - `LimitMode.none`, `attemptsOnly`, `timeOnly`, and `attemptsAndTime` are supported.
@@ -65,6 +68,9 @@ Codex should not read this file for every task; read it only when historical con
 - History was polished into a compact tactical table with subtle texture and aligned columns.
 - Bomb hero stage animation uses fixed image position with light/glow overlays and crossfaded stage changes.
 - Keypad press feedback was added for number/delete/submit buttons.
+- Current Code was restyled from four button-like slots into a grouped dark metal/code display panel using the existing slot PNGs plus Flutter-rendered panel, border, and subtle glow effects.
+- Current Code slot tap selection is visible through border, brightness, and restrained glow rather than color alone.
+- Keypad active Delete/Submit text readability was lightly improved while preserving keypad sizing and assets.
 
 ### Result Overlay
 
@@ -103,11 +109,14 @@ Codex should not read this file for every task; read it only when historical con
   - `assets/game/result/result_button_primary.png`
   - `assets/game/result/result_button_secondary.png`
 - Failure reveal animation went through several timing passes and now uses a Flutter-only sequence:
-  `failure_scene_bg.png` appears immediately, the screen shakes briefly, explosion light/contrast flickers over the background, then the final panel/title/code/buttons appear nearly together through a shade reveal.
+  `failure_scene_bg.png` appears immediately, the screen shakes briefly, explosion light/contrast flickers over the background for about 1.4 seconds, and the final panel/title/code/buttons begin appearing at the same time as the flicker.
 - Strong full-screen red flash was removed because it read like a rendering error; Failure impact is now handled by shake, brightness/contrast flicker, and warm explosion-light overlay.
 - Failure result assets are precached in `GameScreen` to avoid a blank image decode frame before the background appears.
 - Failure reveal is skippable by tapping; taps during reveal jump to the final result state without triggering `TRY AGAIN` or `HOME`.
 - Failure result buttons use the new result button frame assets, with Korean/English labels still rendered in Flutter.
+- Failure result button rendering was cleaned up so `TRY AGAIN` uses `assets/game/result/result_button_primary.png` and `HOME` uses `assets/game/result/result_button_secondary.png` directly, with Flutter labels preserved and temporary Flutter-generated backing/gloss removed.
+- Failure Korean title iteration settled back on `assets/game/result/failure_title_ko.png` through `GameAssetPaths.resultFailureTitleKo`; an intermediate `resultfailure_title_ko.png` path was no longer used.
+- User-provided Failure Korean title art was repeatedly normalized for the result overlay. The current `failure_title_ko.png` is a transparent `1329 x 783` title image scaled to fill the Failure panel title slot without clipping.
 - Technical asset preparation was limited to transparency/crop cleanup on `failure_result_panel.png`, `result_button_primary.png`, and `result_button_secondary.png`.
 - Failure result layout was polished through several passes:
   the background bomb/explosion image was lifted, the panel was made visually longer, title/code/button spacing was rebalanced, and bottom overflow was addressed for short portrait heights.

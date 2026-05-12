@@ -47,8 +47,13 @@ void main() {
     expect(controller.gameOverReason, GameOverReason.attemptsExhausted);
   });
 
-  test('time only fails when timer reaches zero', () {
+  test('time only waits for first input before ticking', () {
     final controller = GameController()..start(config(LimitMode.timeOnly));
+    controller.tickOneSecond();
+    expect(controller.status, GameStatus.playing);
+    expect(controller.remainingSeconds, 1);
+
+    controller.inputDigit(5);
     controller.tickOneSecond();
     expect(controller.status, GameStatus.failed);
     expect(controller.gameOverReason, GameOverReason.timeExpired);

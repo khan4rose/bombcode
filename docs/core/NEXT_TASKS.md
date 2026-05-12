@@ -84,6 +84,7 @@ Current focus:
 
 - Verify Success and Failure overlays on `360x800` and smaller portrait heights.
 - Check `TRY AGAIN` and `HOME` visibility, text readability, and `BOTTOM OVERFLOWED` absence.
+- Check Failure Korean title alignment against the Failure result panel now that `failure_title_ko.png` is transparent and scaled to fill the title slot without clipping.
 - Verify all 4 localized result combinations:
   Failure English, Failure Korean, Success English, Success Korean.
 - For Failure, confirm the gameplay layer is hidden while the bomb/explosion/smoke background remains visible.
@@ -102,17 +103,24 @@ Implemented notes:
   `result_button_primary.png`, and `result_button_secondary.png`.
 - Failure no longer renders `_GameplayView` behind the result scene; this separates gameplay hiding from failure background visibility.
 - Failure reveal now uses Flutter animation only:
-  the detonation background appears immediately, the screen shakes briefly, explosion light flickers over the background for about 1.5 seconds, then panel/title/code/buttons appear nearly together with a slower shade reveal.
+  the detonation background appears immediately, the screen shakes briefly, explosion light flickers over the background for about 1.4 seconds, and panel/title/code/buttons begin appearing at the same time as the flicker.
 - Strong full-screen red flash was removed from the Failure reveal; visual impact now comes from shake, background brightness/contrast flicker, and a warm explosion-light overlay.
 - Failure result assets are precached in `GameScreen` so the detonation background does not show a blank first frame.
 - Failure reveal tap-to-skip jumps to the final state and keeps `TRY AGAIN` / `HOME` disabled until the reveal is complete.
 - Failure panel and result button assets had only technical transparency/crop cleanup; no new artwork was generated.
+- Failure `TRY AGAIN` / `HOME` now render the provided button PNGs directly; the temporary Flutter-generated metal backing, gloss decoration, and extra label glow were removed.
+- Failure Korean title resolves to `assets/game/result/failure_title_ko.png`. The latest user-provided art was converted to a transparent PNG, normalized to the standard title canvas, and scaled to fill the Failure panel title area without clipping.
 - Failure layout was further polished so the answer area shows only the correct code, with a small cyber/metal key icon before it; `ANSWER`, `ATTEMPTS`, and `TIME` are not shown on the Failure result.
 - A new transparent key icon asset was added at `assets/game/result/result_key_icon.png` and wired through `GameAssetPaths.resultKeyIcon`.
 - Failure background/panel composition was adjusted upward/taller for better visual balance, with larger buttons and a larger key/code presentation.
 - Success was upgraded to the same layered result architecture with `assets/game/result/success_bg.png`, `success_panel.png`, and localized title assets.
 - Success visuals were not intentionally changed in the failure-only replacement pass.
 - Dynamic values and button labels remain Flutter-rendered.
+- Current Code was polished into a grouped industrial display panel rather than four independent button-like slots.
+- Current Code slots now support tap-to-select editing:
+  selected slot keypad input replaces that digit, duplicate digit rules remain enforced, and Submit still requires a complete code.
+- Delete now clears the selected slot first and keeps that slot selected for immediate replacement; without a selected slot it keeps the existing last-digit delete behavior.
+- Time-limit countdown now starts on the first valid keypad/input edit instead of when the Game Screen first appears.
 
 Read:
 
@@ -136,7 +144,7 @@ Protected:
 User verification sequence:
 
 ```bash
-dart format lib/features/game/game_screen.dart lib/features/game/widgets/game_asset_paths.dart
+dart format lib/features/game/game_screen.dart lib/features/game/widgets/code_slots.dart lib/features/game/widgets/number_keypad.dart lib/features/game/game_controller.dart test/game_controller_test.dart
 flutter analyze
 flutter test
 flutter run --disable-dds --enable-software-rendering

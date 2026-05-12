@@ -39,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen> {
       body: SizedBox.expand(
         child: Image.asset(
           _assetFor(context),
-          fit: BoxFit.cover,
+          fit: _fitFor(context),
           filterQuality: FilterQuality.high,
           errorBuilder: (context, error, stackTrace) {
             return const ColoredBox(color: Colors.black);
@@ -73,5 +73,10 @@ class _SplashScreenState extends State<SplashScreen> {
     return locale.languageCode == 'ko'
         ? 'assets/splash/main_kor.png'
         : 'assets/splash/main_eng.png';
+  }
+
+  BoxFit _fitFor(BuildContext context) {
+    final locale = PlatformDispatcher.instance.locale;
+    return locale.languageCode == 'ko' ? BoxFit.contain : BoxFit.cover;
   }
 }

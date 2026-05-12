@@ -140,10 +140,20 @@ class _GameScreenState extends State<GameScreen> {
   }
 }
 
-class _GameplayView extends StatelessWidget {
+class _GameplayView extends StatefulWidget {
   final GameController controller;
 
   const _GameplayView({required this.controller});
+
+  @override
+  State<_GameplayView> createState() => _GameplayViewState();
+}
+
+class _GameplayViewState extends State<_GameplayView> {
+  int? _selectedCodeIndex;
+  List<int?>? _slotDigitsOverride;
+
+  GameController get controller => widget.controller;
 
   @override
   Widget build(BuildContext context) {
@@ -217,6 +227,9 @@ class _GameplayView extends StatelessWidget {
                 child: CodeSlots(
                   length: controller.config!.codeLength,
                   digits: controller.currentGuess,
+                  slotDigits: _visibleSlotDigits(),
+                  selectedIndex: _effectiveSelectedIndex(),
+                  onSlotTap: _selectCodeSlot,
                 ),
               ),
               SizedBox(height: gap),
@@ -226,7 +239,7 @@ class _GameplayView extends StatelessWidget {
                   child: FractionallySizedBox(
                     widthFactor: 0.74,
                     child: NumberKeypad(
-                      usedDigits: controller.currentGuess.toSet(),
+                      usedDigits: _usedDigitsForKeypad(),
                       onDigit: _inputDigit,
                       onDelete: _deleteDigit,
                       onSubmit: controller.canSubmit ? _submitGuess : null,
@@ -269,19 +282,87 @@ class _GameplayView extends StatelessWidget {
     );
   }
 
+  int? _effectiveSelectedIndex() {
+    final selected = _selectedCodeIndex;
+    final cfg = controller.config;
+    if (selected == null || cfg == null) {
+      return null;
+    }
+    if (selected < 0 || selected >= cfg.codeLength) {
+      return null;
+    }
+    if (selected > controller.currentGuess.length) {
+      return null;
+    }
+    return selected;
+  }
+
+  Set<int> _usedDigitsForKeypad() {
+    final selected = _effectiveSelectedIndex();
+    final slots = _visibleSlotDigits();
+    final usedDigits = slots.whereType<int>().toSet();
+    if (selected != null) {
+      final selectedDigit = slots[selected];
+      if (selectedDigit != null) {
+        usedDigits.remove(selectedDigit);
+      }
+    }
+    return usedDigits;
+  }
+
+  void _selectCodeSlot(int index) {
+    final cfg = controller.config;
+    if (cfg == null || index < 0 || index >= cfg.codeLength) {
+      return;
+    }
+    final slots = _visibleSlotDigits();
+    if (slots[index] == null && index != _firstEmptySlotIndex(slots)) {
+      return;
+    }
+    setState(() => _selectedCodeIndex = index);
+  }
+
   void _inputDigit(int digit) {
-    final before = controller.currentGuess.length;
-    controller.inputDigit(digit);
-    if (controller.currentGuess.length > before) {
+    final selected = _effectiveSelectedIndex();
+    final before = List<int>.of(controller.currentGuess);
+    if (selected != null) {
+      final slots = _visibleSlotDigits();
+      final duplicateIndex = slots.indexOf(digit);
+      if (duplicateIndex != -1 && duplicateIndex != selected) {
+        return;
+      }
+      slots[selected] = digit;
+      _applySlotDigits(slots);
+    } else {
+      controller.inputDigit(digit);
+    }
+    if (!_sameDigits(before, controller.currentGuess)) {
       unawaited(GameSoundEffects.instance.playKeypad());
       unawaited(GameHaptics.instance.playKeypad());
     }
   }
 
   void _deleteDigit() {
+    final selected = _effectiveSelectedIndex();
+    if (selected != null) {
+      final slots = _visibleSlotDigits();
+      if (slots[selected] == null) {
+        return;
+      }
+      final before = List<int>.of(controller.currentGuess);
+      slots[selected] = null;
+      _applySlotDigits(slots, keepInteriorGaps: true);
+      if (!_sameDigits(before, controller.currentGuess)) {
+        unawaited(GameSoundEffects.instance.playDelete());
+        unawaited(GameHaptics.instance.playDelete());
+      }
+      return;
+    }
+
     final before = controller.currentGuess.length;
     controller.deleteDigit();
     if (controller.currentGuess.length < before) {
+      _slotDigitsOverride = null;
       unawaited(GameSoundEffects.instance.playDelete());
       unawaited(GameHaptics.instance.playDelete());
     }
@@ -293,7 +374,74 @@ class _GameplayView extends StatelessWidget {
     }
     unawaited(GameSoundEffects.instance.playSubmit());
     unawaited(GameHaptics.instance.playSubmit());
+    _selectedCodeIndex = null;
+    _slotDigitsOverride = null;
     controller.submitGuess();
+  }
+
+  List<int?> _visibleSlotDigits() {
+    final cfg = controller.config;
+    final length = cfg?.codeLength ?? controller.currentGuess.length;
+    final override = _slotDigitsOverride;
+    if (override != null &&
+        override.length == length &&
+        _sameDigits(_filledDigits(override), controller.currentGuess)) {
+      return List<int?>.of(override);
+    }
+
+    return [
+      for (var index = 0; index < length; index++)
+        index < controller.currentGuess.length
+            ? controller.currentGuess[index]
+            : null,
+    ];
+  }
+
+  void _applySlotDigits(List<int?> slots, {bool keepInteriorGaps = false}) {
+    final nextGuess = _filledDigits(slots);
+    controller.setCurrentGuess(nextGuess);
+    setState(() {
+      _slotDigitsOverride = keepInteriorGaps || _hasInteriorGap(slots)
+          ? List<int?>.of(slots)
+          : null;
+    });
+  }
+
+  List<int> _filledDigits(List<int?> slots) {
+    return [for (final digit in slots) ?digit];
+  }
+
+  int? _firstEmptySlotIndex(List<int?> slots) {
+    for (var index = 0; index < slots.length; index++) {
+      if (slots[index] == null) {
+        return index;
+      }
+    }
+    return null;
+  }
+
+  bool _hasInteriorGap(List<int?> slots) {
+    var sawEmpty = false;
+    for (final digit in slots) {
+      if (digit == null) {
+        sawEmpty = true;
+      } else if (sawEmpty) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  bool _sameDigits(List<int> a, List<int> b) {
+    if (a.length != b.length) {
+      return false;
+    }
+    for (var index = 0; index < a.length; index++) {
+      if (a[index] != b[index]) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 
@@ -1448,7 +1596,7 @@ class _FailureResultOverlayState extends State<_FailureResultOverlay>
               Curves.easeOutCubic,
             );
             final flickerOut =
-                1 - _timelineValue(value, 0.78, 0.84, Curves.easeOutCubic);
+                1 - _timelineValue(value, 0.64, 0.68, Curves.easeOutCubic);
             final flicker = math.pow(
               math.max(0.0, math.sin(value * math.pi * 18)),
               1.7,
@@ -1458,26 +1606,26 @@ class _FailureResultOverlayState extends State<_FailureResultOverlay>
                 .toDouble();
             final panelValue = _timelineValue(
               value,
-              0.73,
-              0.98,
+              0.0,
+              0.18,
               Curves.easeOutCubic,
             );
             final titleValue = _timelineValue(
               value,
-              0.73,
-              0.98,
+              0.0,
+              0.18,
               Curves.easeOutBack,
             );
             final statsValue = _timelineValue(
               value,
-              0.73,
-              0.98,
+              0.0,
+              0.18,
               Curves.easeOutCubic,
             );
             final buttonsValue = _timelineValue(
               value,
-              0.73,
-              0.98,
+              0.0,
+              0.18,
               Curves.easeOutCubic,
             );
             final backgroundLift = Offset(0, -screenHeight * 0.092);
@@ -1902,9 +2050,9 @@ class _FailureResultComposition extends StatelessWidget {
       builder: (context, constraints) {
         final width = constraints.maxWidth;
         final height = constraints.maxHeight;
-        final titleTop = height * (tight ? 0.148 : 0.174);
-        final titleHeight = height * (tight ? 0.272 : 0.300);
-        final titleInset = (width * 0.070).clamp(18.0, 28.0).toDouble();
+        final titleTop = height * (tight ? 0.122 : 0.148);
+        final titleHeight = height * (tight ? 0.328 : 0.354);
+        final titleInset = (width * 0.025).clamp(8.0, 14.0).toDouble();
         final contentTop = height * (tight ? 0.466 : 0.500);
         final contentBottom = height * (tight ? 0.045 : 0.055);
         final contentInset = (width * 0.145).clamp(36.0, 50.0).toDouble();
@@ -2232,10 +2380,6 @@ class _FailureResultDynamicLayer extends StatelessWidget {
                       label: strings.tryAgain,
                       height: primaryButtonHeight,
                       padding: primaryButtonPadding,
-                      materialPolish: true,
-                      polishAccent: visuals.accent,
-                      materialPolishStrength: 1.0,
-                      labelGlowStrength: 0.10,
                       onTap: onRestart,
                     ),
                     SizedBox(height: buttonGap),
@@ -2244,10 +2388,6 @@ class _FailureResultDynamicLayer extends StatelessWidget {
                       label: strings.home,
                       height: secondaryButtonHeight,
                       padding: secondaryButtonPadding,
-                      materialPolish: true,
-                      polishAccent: visuals.accent,
-                      materialPolishStrength: 0.88,
-                      labelGlowStrength: 0.07,
                       onTap: () => Navigator.of(context).pushAndRemoveUntil(
                         MaterialPageRoute(builder: (_) => const HomeScreen()),
                         (route) => false,
@@ -2654,10 +2794,6 @@ class _ModalActionButton extends StatelessWidget {
   final VoidCallback onTap;
   final double height;
   final EdgeInsetsGeometry? padding;
-  final bool materialPolish;
-  final Color? polishAccent;
-  final double materialPolishStrength;
-  final double labelGlowStrength;
 
   const _ModalActionButton({
     required this.assetPath,
@@ -2665,106 +2801,24 @@ class _ModalActionButton extends StatelessWidget {
     required this.onTap,
     this.height = 52,
     this.padding,
-    this.materialPolish = false,
-    this.polishAccent,
-    this.materialPolishStrength = 1.0,
-    this.labelGlowStrength = 0.0,
   });
 
   @override
   Widget build(BuildContext context) {
     final resolvedPadding =
         padding ?? const EdgeInsets.symmetric(horizontal: 34, vertical: 12);
-    final labelWidget = _ModalButtonLabel(
-      label,
-      glowStrength: labelGlowStrength,
-    );
+    final labelWidget = _ModalButtonLabel(label);
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: SizedBox(
         height: height,
-        child: materialPolish
-            ? Stack(
-                fit: StackFit.expand,
-                children: [
-                  AssetFrame(
-                    assetPath: assetPath,
-                    backing: _ButtonMetalBacking(
-                      accent: polishAccent ?? const Color(0xFFFF493D),
-                      strength: materialPolishStrength,
-                    ),
-                  ),
-                  IgnorePointer(
-                    child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.white.withValues(
-                              alpha: 0.10 * materialPolishStrength,
-                            ),
-                            Colors.transparent,
-                            Colors.black.withValues(
-                              alpha: 0.14 * materialPolishStrength,
-                            ),
-                          ],
-                          stops: const [0.0, 0.48, 1.0],
-                        ),
-                      ),
-                    ),
-                  ),
-                  Padding(
-                    padding: resolvedPadding,
-                    child: Align(child: labelWidget),
-                  ),
-                ],
-              )
-            : AssetFrame(
-                assetPath: assetPath,
-                padding: resolvedPadding,
-                child: labelWidget,
-              ),
-      ),
-    );
-  }
-}
-
-class _ButtonMetalBacking extends StatelessWidget {
-  final Color accent;
-  final double strength;
-
-  const _ButtonMetalBacking({required this.accent, required this.strength});
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            const Color(0xFF3A3D42).withValues(alpha: 0.82 + 0.10 * strength),
-            const Color(0xFF121417).withValues(alpha: 0.98),
-            const Color(0xFF050607).withValues(alpha: 1.0),
-          ],
-          stops: const [0.0, 0.48, 1.0],
+        child: AssetFrame(
+          assetPath: assetPath,
+          padding: resolvedPadding,
+          child: labelWidget,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: accent.withValues(alpha: 0.16 * strength),
-            blurRadius: 10,
-            spreadRadius: -2,
-          ),
-          BoxShadow(
-            color: Colors.white.withValues(alpha: 0.08 * strength),
-            blurRadius: 4,
-            spreadRadius: -3,
-            offset: const Offset(0, -1),
-          ),
-        ],
       ),
     );
   }
@@ -2772,9 +2826,8 @@ class _ButtonMetalBacking extends StatelessWidget {
 
 class _ModalButtonLabel extends StatelessWidget {
   final String label;
-  final double glowStrength;
 
-  const _ModalButtonLabel(this.label, {this.glowStrength = 0.0});
+  const _ModalButtonLabel(this.label);
 
   @override
   Widget build(BuildContext context) {
@@ -2789,11 +2842,6 @@ class _ModalButtonLabel extends StatelessWidget {
           fontWeight: FontWeight.w900,
           letterSpacing: 0,
           shadows: [
-            if (glowStrength > 0)
-              Shadow(
-                color: Colors.white.withValues(alpha: glowStrength),
-                blurRadius: 5,
-              ),
             const Shadow(
               color: Colors.black,
               blurRadius: 8,

@@ -30,17 +30,20 @@ BoomCode 작업을 시작할 때 항상 읽는 초경량 현재 상태 문서이
 - App shell, splash, home, mission setup, game, records, tutorial, and settings screens exist.
 - Common background uses `AppBackground` and `assets/menu/background.png`.
 - MVP is portrait-only via Flutter orientation lock and Android `screenOrientation`.
-- Game logic supports answer generation, digit input, judging, timer, success/failure, records, attempts OFF, and time OFF.
+- Game logic supports answer generation, digit input/editing, judging, timer, success/failure, records, attempts OFF, and time OFF.
+- Time-limit countdown starts on the first valid keypad/input edit, not immediately when the Game Screen opens.
 - Home Start Game loads the last saved `GameConfig`; first-run default is Normal + Attempts OFF + Time OFF.
 - Sound and haptic foundations exist; custom audio assets are not integrated yet.
 - Game Screen active flow is `Bomb HUD -> Current Code -> Keypad -> History`.
+- Current Code is a single industrial display panel containing four slot positions; filled slots can be tapped to select and edit a specific digit.
 - Result screen uses layered cinematic compositions for Success and Failure:
   background scene image, panel/frame image, localized title image, then Flutter-rendered dynamic text/buttons.
 - Result assets live under `assets/game/result/`:
   Failure uses `failure_scene_bg.png`, `failure_result_panel.png`, `failure_title_en.png`, `failure_title_ko.png`, `result_button_primary.png`, and `result_button_secondary.png`;
   Success uses `success_bg.png`, `success_panel.png`, `success_title_en.png`, and `success_title_ko.png`.
+- Failure Korean title art uses `assets/game/result/failure_title_ko.png`; it is a transparent PNG normalized to the standard result title canvas and scaled to fill the Failure panel title slot without clipping.
 - Failure hides the gameplay layer itself and shows a bomb detonation aftermath scene behind the result panel.
-- Failure has a Flutter-only reveal animation: `failure_scene_bg.png` appears immediately, the scene shakes briefly, explosion light flickers for about 1.5 seconds, then the panel/title/code/buttons appear together through a slower shade reveal.
+- Failure has a Flutter-only reveal animation: `failure_scene_bg.png` appears immediately, the scene shakes briefly, explosion light flickers for about 1.4 seconds, and the panel/title/code/buttons begin appearing at the same time as the flicker.
 - Failure result assets are precached from `GameScreen` to avoid a blank first frame before the detonation background appears.
 - Failure result now presents only the correct code in the answer area, paired with `assets/game/result/result_key_icon.png`; Attempts and Time are intentionally hidden on Failure.
 - Success uses the same result architecture with a stabilized/defused device scene, not the older modal-style result.
@@ -153,6 +156,7 @@ Game Screen:
 - Active visual flow: `Bomb HUD -> Current Code -> Keypad -> History`.
 - Bomb hero uses `bomb_hero_stable/caution/danger/critical.png`.
 - Code slots use `code_slot_empty/filled/selected.png`.
+- Current Code slots are grouped inside a shared display panel; tapping a slot selects it, keypad input replaces the selected digit, and Delete clears the selected digit before falling back to last-digit delete.
 - Keypad uses `keypad_button_*`, `keypad_delete_button.png`, `keypad_submit_button.png`, and disabled submit asset.
 - History is a compact tactical table; latest row first; `A` is green and `T` is blue.
 - Check Table opens from History area; default main screen does not show the grid.
@@ -160,6 +164,7 @@ Game Screen:
 - Result title/subtitle are image assets selected by success/failure and device language.
 - Success keeps Answer, Attempts, Time, Try Again, and Home Flutter-rendered and interactive.
 - Failure keeps the correct code and button labels Flutter-rendered; the correct code is displayed as a large centered row with the cyber/metal key icon asset and no `ANSWER`, `ATTEMPTS`, or `TIME` labels.
+- Failure `TRY AGAIN` / `HOME` use only `result_button_primary.png` / `result_button_secondary.png` as button frames; do not add temporary generated button backing, decoration, or gloss overlays in Flutter.
 - Failure result should hide the gameplay layer itself instead of relying on heavy fog over the whole scene; keep the bomb/explosion/smoke background visible behind the result composition.
 - Failure reveal animation should stay Flutter-only, skippable, and must not allow result buttons to fire during skip.
 - Do not use a strong full-screen red flash for Failure; explosion emphasis should come from shake, background light/contrast flicker, and shade reveal over the existing scene.

@@ -94,10 +94,18 @@ assets/game/keypad_submit_disabled.png
 
 Rules:
 
+- Current Code is presented as one grouped industrial display panel containing four slot positions, not as four independent keypad-like buttons.
+- Keep the display panel in the existing `Bomb HUD -> Current Code -> Keypad -> History` position.
 - Selected slot must be visible without relying only on text.
+- Filled slots can be tapped to select a specific position for editing.
+- Keypad input replaces the selected filled slot when one is selected; otherwise input continues left-to-right.
+- Delete clears the selected slot first and leaves it selected for immediate replacement; if no slot is selected, Delete keeps the existing last-input delete behavior.
+- Duplicate digit prevention must remain intact. Re-entering the selected slot's own digit is allowed, but entering a digit already used in another slot is blocked.
+- Submit remains enabled only when the code is complete.
 - Delete/Submit labels are Flutter-rendered.
 - Disabled buttons should not animate or respond as active controls.
 - Button press feedback must not change layout size.
+- Time-limit countdown starts on the first valid keypad/input edit, not immediately when the Game Screen opens.
 
 ---
 
